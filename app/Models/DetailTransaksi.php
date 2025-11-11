@@ -4,11 +4,16 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class DetailTransaksi extends Model
 {
     use HasFactory;
 
+    /**
+     * Tentukan field yang boleh diisi massal.
+     * (Ini yang hilang/salah sebelumnya)
+     */
     protected $fillable = [
         'transaksi_id',
         'produk_id',
@@ -17,32 +22,21 @@ class DetailTransaksi extends Model
         'harga_satuan',
         'subtotal',
         'catatan_pembeli',
-        'catatan_pembeli_per_produk',
     ];
 
     /**
-     * Mendapatkan header transaksi.
+     * Relasi ke Transaksi (Header).
      */
-    public $timestamps = false;
-    
-    public function transaksi()
+    public function transaksi(): BelongsTo
     {
         return $this->belongsTo(Transaksi::class);
     }
 
     /**
-     * Mendapatkan info produk.
+     * Relasi ke Produk yang dibeli.
      */
-    public function produk()
+    public function produk(): BelongsTo
     {
         return $this->belongsTo(Produk::class);
-    }
-
-    /**
-     * Mendapatkan info toko.
-     */
-    public function toko()
-    {
-        return $this->belongsTo(Toko::class);
     }
 }

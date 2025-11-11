@@ -1,53 +1,64 @@
 <?php
 
-namespace App\Models;
+// --- INI DIA PERBAIKANNYA ---
+namespace App\Models; 
+// (Sebelumnya: namespace App;)
+// --- BATAS PERBAIKAN ---
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Transaksi extends Model
 {
     use HasFactory;
 
+    /**
+     * Tentukan field yang boleh diisi massal.
+     */
     protected $fillable = [
         'user_id',
-        'alamat_id',
-        'kode_transaksi',
-        'total_harga_produk',
-        'biaya_pengiriman',
-        'total_pembayaran',
+        'toko_id',
+        'invoice_id',
         'metode_pembayaran',
-        'status_pembayaran',
-        'status_pesanan',
+        'total_harga',
+        'ongkir',
+        'total_bayar',
+        'alamat_pengiriman',
+        'status_transaksi',
         'nomor_resi',
-        'jasa_pengiriman',
-        'catatan_pembeli',
-        
+        'catatan_penjual'
     ];
 
-     protected $casts = [
-        'alamat_pengiriman_json' => 'array', // Otomatis konversi JSON ke Array
-    ];
     /**
-     * Mendapatkan User (pembeli) yang melakukan transaksi.
+     * Ubah alamat_pengiriman (JSON string) menjadi array/object
+     * saat diakses di Eloquent.
      */
-    public function user()
+    protected $casts = [
+        'alamat_pengiriman' => 'array',
+    ];
+
+    /**
+     * Relasi ke User (Pembeli).
+     */
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
     /**
-     * Mendapatkan alamat pengiriman transaksi.
+     * Relasi ke Toko (Penjual).
      */
-    public function alamat()
+    public function toko(): BelongsTo
     {
-        return $this->belongsTo(Alamat::class);
+        return $this->belongsTo(Toko::class);
     }
 
     /**
-     * Mendapatkan semua item/detail dalam transaksi ini.
+     * Relasi ke Detail Transaksi (Item-item).
      */
-    public function details()
+    public function detailTransaksis(): HasMany
     {
         return $this->hasMany(DetailTransaksi::class);
     }

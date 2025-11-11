@@ -1,9 +1,14 @@
 <?php
 
+// --- INI DIA PERBAIKANNYA ---
 namespace App\Models;
+// (Sebelumnya: namespace App;)
+// --- BATAS PERBAIKAN ---
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Toko extends Model
 {
@@ -22,26 +27,34 @@ class Toko extends Model
     ];
 
     /**
-     * Mendapatkan User (penjual) pemilik toko ini.
+     * Relasi ke User (Satu Toko dimiliki oleh satu User).
      */
-    public function user()
+    public function user(): BelSqueaksTo
     {
         return $this->belongsTo(User::class);
     }
 
     /**
-     * Mendapatkan provinsi lokasi toko.
+     * Relasi ke Provinsi (Satu Toko berlokasi di satu Provinsi).
      */
-    public function provinsi()
+    public function provinsi(): BelongsTo
     {
         return $this->belongsTo(Provinsi::class);
     }
 
     /**
-     * Mendapatkan semua produk yang dijual toko ini.
+     * Relasi ke Produk (Satu Toko memiliki banyak Produk).
      */
-    public function produks()
+    public function produks(): HasMany
     {
         return $this->hasMany(Produk::class);
+    }
+
+    /**
+     * Relasi ke Transaksi (Satu Toko memiliki banyak Transaksi).
+     */
+    public function transaksis(): HasMany
+    {
+        return $this->hasMany(Transaksi::class);
     }
 }

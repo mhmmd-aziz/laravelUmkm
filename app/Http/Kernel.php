@@ -64,4 +64,3 @@ class Kernel extends HttpKernel
         // (Semua alias kustom sudah dipindah ke bootstrap/app.php, jadi di sini sudah bersih)
     ];
 }
-

@@ -1,9 +1,10 @@
 <!DOCTYPE html>
+{{-- Ganti lang menjadi dinamis --}}
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <meta name="csrf-token" content="{{ csrf_token() }}"> {{-- PENTING UNTUK AJAX --}}
+        <meta name="csrf-token" content="{{ csrf_token() }}"> 
 
         <title>{{ config('app.name', 'Laravel') }}</title>
 
@@ -14,7 +15,7 @@
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
 
-        {{-- CSS UNTUK CHATBOT (DARI LANGKAH 15) --}}
+        {{-- CSS UNTUK CHATBOT --}}
         <style>
             #chatbot-toggle {
                 position: fixed;
@@ -60,6 +61,10 @@
                 opacity: 1;
                 visibility: visible;
             }
+            .dark #chatbot-widget {
+                background-color: #1f2937; /* gray-800 */
+                box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+            }
             #chatbot-header {
                 padding: 1rem;
                 background-color: #4f46e5; /* indigo-600 */
@@ -69,6 +74,9 @@
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
+            }
+            .dark #chatbot-header {
+                border-bottom: 1px solid #374151; /* gray-700 */
             }
             #chatbot-header button {
                 background: none;
@@ -85,6 +93,9 @@
                 display: flex;
                 flex-direction: column;
                 gap: 0.75rem;
+            }
+            .dark #chatbot-messages {
+                background-color: #111827; /* gray-900 */
             }
             .message {
                 padding: 0.75rem 1rem;
@@ -104,11 +115,19 @@
                 align-self: flex-start;
                 border-bottom-left-radius: 4px;
             }
+            .dark .message.bot {
+                background-color: #374151; /* gray-700 */
+                color: #f3f4f6; /* gray-100 */
+            }
             .message.loading {
                 background-color: #e5e7eb;
                 color: #6b7280;
                 align-self: flex-start;
                 font-style: italic;
+            }
+            .dark .message.loading {
+                 background-color: #374151;
+                 color: #9ca3af; /* gray-400 */
             }
             #chatbot-input {
                 border-top: 1px solid #e5e7eb;
@@ -116,12 +135,22 @@
                 display: flex;
                 gap: 0.5rem;
             }
+            .dark #chatbot-input {
+                 border-top: 1px solid #374151; /* gray-700 */
+            }
             #chatbot-input input {
                 flex-grow: 1;
-                border: 1px solid #d1d5db;
+                border: 1px solid #d1d5db; /* gray-300 */
                 border-radius: 8px;
                 padding: 0.75rem;
                 font-size: 0.875rem;
+                background-color: white;
+                color: #1f2937;
+            }
+            .dark #chatbot-input input {
+                background-color: #374151; /* gray-700 */
+                border-color: #4b5563; /* gray-600 */
+                color: #f3f4f6; /* gray-100 */
             }
             #chatbot-input button {
                 background-color: #4f46e5;
@@ -139,23 +168,57 @@
     </head>
     <body class="font-sans text-gray-900 antialiased dark:bg-gray-900">
         
-        {{-- INI ADALAH PERBAIKAN: TOMBOL LOGIN & REGISTER --}}
-        <div class="fixed top-0 right-0 p-6 text-right z-10">
+        {{-- INI ADALAH PERBAIKAN: Tombol Login/Register & Bahasa --}}
+        <div class="fixed top-0 right-0 p-6 text-right z-10 flex items-center space-x-4">
+            
+            <!-- Language Switcher -->
+            <div class="relative">
+                <x-dropdown align="right" width="48">
+                    <x-slot name="trigger">
+                        <button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none transition ease-in-out duration-150">
+                            <div>{{ strtoupper(app()->getLocale()) }}</div> 
+                            <svg class="ms-1 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c.24 0 .467.013.69.04M12 21c-.24 0-.467.013-.69.04M12 3.04c-4.512 0-8.248 3.513-8.69 7.956M12 3.04c4.512 0 8.248 3.513 8.69 7.956M12 3.04c.24 0 .467-.013.69-.04M12 3.04c-.24 0-.467-.013-.69-.04M20.957 10.996C20.728 11 20.48 11 20.22 11h-.44c-.26 0-.508.01-.748.028M3.043 10.996C3.272 11 3.52 11 3.78 11h.44c.26 0 .508.01.748.028m12.456 0A4.5 4.5 0 0012.5 10.5h-1a4.5 4.5 0 00-4.956 1.528A2.25 2.25 0 0012 15a2.25 2.25 0 004.956-1.528z" />
+                            </svg>
+                        </button>
+                    </x-slot>
+
+                    <x-slot name="content">
+                        <!-- INI PERBAIKANNYA: Gunakan Form POST -->
+                        <form method="POST" action="{{ route('language.switch') }}">
+                            @csrf
+                            <input type="hidden" name="locale" value="id">
+                            <x-dropdown-link href="#" onclick="event.preventDefault(); this.closest('form').submit();">
+                                {{ __('ID - Bahasa Indonesia') }}
+                            </x-dropdown-link>
+                        </form>
+                        <form method="POST" action="{{ route('language.switch') }}">
+                            @csrf
+                            <input type="hidden" name="locale" value="en">
+                            <x-dropdown-link href="#" onclick="event.preventDefault(); this.closest('form').submit();">
+                                {{ __('EN - English') }}
+                            </x-dropdown-link>
+                        </form>
+                    </x-slot>
+                </x-dropdown>
+            </div>
+            
+            {{-- Tombol Login/Register --}}
             @if (Route::has('login'))
                 <div class="space-x-4">
                     @auth
                         @if(Auth::user()->role === 'admin')
-                            <a href="{{ route('admin.dashboard') }}" class="font-semibold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500">Dashboard</a>
+                            <a href="{{ route('admin.dashboard') }}" class="font-semibold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500">{{ __('Dashboard') }}</a>
                         @elseif(Auth::user()->role === 'penjual')
-                            <a href="{{ route('penjual.dashboard') }}" class="font-semibold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500">Dashboard</a>
+                            <a href="{{ route('penjual.dashboard') }}" class="font-semibold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500">{{ __('Dashboard') }}</a>
                         @else
-                            <a href="{{ route('home') }}" class="font-semibold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500">Home</a>
+                            <a href="{{ route('home') }}" class="font-semibold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500">{{ __('Home') }}</a>
                         @endif
                     @else
-                        <a href="{{ route('login') }}" class="font-semibold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500">Log in</a>
+                        <a href="{{ route('login') }}" class="font-semibold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500">{{ __('Log in') }}</a>
 
                         @if (Route::has('register'))
-                            <a href="{{ route('register') }}" class="ml-4 font-semibold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500">Register</a>
+                            <a href="{{ route('register') }}" class="font-semibold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500">{{ __('Register') }}</a>
                         @endif
                     @endauth
                 </div>
@@ -175,41 +238,32 @@
             </div>
         </div>
 
-        {{-- HTML UNTUK CHATBOT (DARI LANGKAH 15) --}}
-        <!-- Tombol Toggle -->
+        {{-- HTML UNTUK CHATBOT --}}
         <div id="chatbot-toggle">
-            <!-- Icon Chat (SVG) -->
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-7 h-7">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-3.86 8.25-8.625 8.25a8.61 8.61 0 01-1.6-.225l-4.328 1.905a.86.86 0 01-1.036-.549.858.858 0 01.106-1.036l2.42-3.181A8.56 8.56 0 013 12c0-4.556 3.86-8.25 8.625-8.25S21 7.444 21 12z" />
             </svg>
         </div>
-
-        <!-- Widget Chat -->
         <div id="chatbot-widget">
-            <!-- Header -->
             <div id="chatbot-header">
-                <span>Asisten AI Budaya</span>
+                <span>{{ __('AI Assistant') }}</span>
                 <button id="chatbot-close">&times;</button>
             </div>
-            <!-- Messages -->
             <div id="chatbot-messages">
                 <div class="message bot">
-                    Halo! Saya Asisten AI. Ada yang bisa saya bantu tanyakan seputar UMKM Budaya Indonesia?
+                    {{ __('Hello! I am AI Assistant. How can I help you regarding Indonesian Culture UMKM?') }}
                 </div>
             </div>
-            <!-- Input -->
             <div id="chatbot-input">
-                <input type="text" id="chatbot-text-input" placeholder="Ketik pesan Anda...">
+                <input type="text" id="chatbot-text-input" placeholder="{{ __('Type your message...') }}">
                 <button id="chatbot-send">
-                    <!-- Icon Send (SVG) -->
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.875L5.999 12zm0 0h7.5" />
                     </svg>
                 </button>
             </div>
         </div>
-
-        {{-- JAVASCRIPT UNTUK CHATBOT (DARI LANGKAH 15) --}}
+        {{-- SCRIPT CHATBOT --}}
         <script>
             document.addEventListener('DOMContentLoaded', function () {
                 const toggleButton = document.getElementById('chatbot-toggle');
@@ -239,16 +293,13 @@
                     const query = textInput.value.trim();
                     if (query === '') return;
 
-                    // Tampilkan pesan user
                     addMessage(query, 'user');
                     textInput.value = '';
                     sendButton.disabled = true;
 
-                    // Tampilkan status loading
                     addMessage('...', 'loading');
                     scrollToBottom();
 
-                    // Kirim ke server (Langkah 15.3)
                     fetch('{{ route("ai.chatbot.query") }}', {
                         method: 'POST',
                         headers: {
@@ -261,10 +312,10 @@
                     })
                     .then(response => response.json())
                     .then(data => {
-                        // Hapus status loading
                         document.querySelector('.message.loading').remove();
-                        // Tampilkan jawaban bot
-                        addMessage(data.reply, 'bot');
+                        // Ganti newline (\n) dengan tag <br>
+                        const formattedReply = data.reply.replace(/\n/g, '<br>');
+                        addMessage(formattedReply, 'bot');
                     })
                     .catch(error => {
                         console.error('Error:', error);
@@ -281,8 +332,7 @@
                     const messageDiv = document.createElement('div');
                     messageDiv.classList.add('message', type);
                     
-                    // Sederhanakan untuk menghindari parsing Markdown yang kompleks
-                    messageDiv.textContent = text; 
+                    messageDiv.innerHTML = text; // Gunakan innerHTML agar <br> ter-render
                     
                     messagesContainer.appendChild(messageDiv);
                     scrollToBottom();
@@ -295,4 +345,3 @@
         </script>
     </body>
 </html>
-

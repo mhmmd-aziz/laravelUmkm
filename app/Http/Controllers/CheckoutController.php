@@ -9,141 +9,202 @@ use App\Models\Alamat;
 use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Validation\Rule;
-// --- TAMBAHAN BARU ---
 use App\Models\Produk;
 use App\Models\Transaksi;
 use App\Models\DetailTransaksi;
-use Illuminate\Support\Facades\DB; // Untuk Database Transaction
-use Carbon\Carbon; // Untuk timestamp
+use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
+// --- TAMBAHAN BARU ---
+use Midtrans\Config;
+use Midtrans\Snap;
 // --- BATAS TAMBAHAN ---
 
 
 class CheckoutController extends Controller
 {
     /**
-     * Menampilkan halaman checkout.
-     * (Fungsi ini sudah benar dari Langkah 9, tidak perlu diubah)
+     * Menampilkan halaman checkout DAN membuat Snap Token.
      */
     public function index(): View|RedirectResponse
     {
+        // 1. Cek Keranjang & Alamat
         if (Cart::isEmpty()) {
             return redirect()->route('cart.index')->with('error', 'Keranjang Anda kosong. Silakan belanja dulu.');
         }
-
         $user = Auth::user();
         $alamats = Alamat::where('user_id', $user->id)->orderBy('label_alamat', 'asc')->get();
-        $cartItems = Cart::getContent()->sortBy('name');
-        $total = Cart::getTotal();
-
         if ($alamats->isEmpty()) {
             return redirect()->route('profile.edit')->with('error', 'Anda harus menambahkan alamat pengiriman terlebih dahulu sebelum checkout.');
         }
+        
+        $cartItems = Cart::getContent()->sortBy('name');
+        $total = Cart::getTotal();
 
-        return view('checkout.index', compact('alamats', 'cartItems', 'total'));
+        // 2. Konfigurasi Midtrans
+        // (Pastikan .env dan config/midtrans.php sudah benar)
+        Config::$serverKey = config('midtrans.server_key');
+        Config::$isProduction = config('midtrans.is_production');
+        Config::$isSanitized = config('midtrans.is_sanitized');
+        Config::$is3ds = config('midtrans.is_3ds');
+
+        // 3. Buat Detail Item untuk Midtrans
+        $midtransItems = [];
+        foreach ($cartItems as $item) {
+            $midtransItems[] = [
+                'id'       => $item->id,
+                'price'    => $item->price,
+                'quantity' => $item->quantity,
+                'name'     => $item->name,
+            ];
+        }
+        
+        // TODO: Tambahkan Ongkir (jika sudah ada)
+        // $midtransItems[] = [
+        //     'id'       => 'ONGKIR',
+        //     'price'    => 15000, 
+        //     'quantity' => 1,
+        //     'name'     => 'Ongkos Kirim',
+        // ];
+        // $total += 15000;
+
+        // 4. Buat Parameter Transaksi
+        $orderId = 'INV-USER-' . $user->id . '-' . Carbon::now()->timestamp;
+        $params = [
+            'transaction_details' => [
+                'order_id' => $orderId,
+                'gross_amount' => $total,
+            ],
+            'item_details' => $midtransItems,
+            'customer_details' => [
+                'first_name' => $user->name,
+                'email' => $user->email,
+                'phone' => $alamats->first()->nomor_telepon, // Ambil dari alamat pertama (default)
+                // 'billing_address' => ... (opsional)
+                // 'shipping_address' => ... (opsional)
+            ],
+        ];
+
+        // 5. Dapatkan Snap Token
+        try {
+            $snapToken = Snap::getSnapToken($params);
+        } catch (\Exception $e) {
+            \Log::error('Midtrans Snap Token Error: ' . $e->getMessage());
+            return redirect()->route('cart.index')->with('error', 'Gagal memulai sesi pembayaran. Silakan coba lagi.');
+        }
+
+        // 6. Kirim ke View
+        return view('checkout.index', compact('alamats', 'cartItems', 'total', 'snapToken'));
     }
 
-    /**
-     * Memproses dan menyimpan pesanan.
-     * (INI ADALAH FUNGSI YANG KITA ISI)
-     */
-    public function store(Request $request): RedirectResponse
-    {
-        // 1. Validasi input
-        $request->validate([
-            'alamat_id' => ['required', 'integer', 'exists:alamats,id'],
-            'metode_pembayaran' => ['required', 'string', Rule::in(['bank_transfer'])],
-        ]);
 
-        // 2. Otorisasi alamat
+    /**
+     * Memproses callback/redirect SETELAH pembayaran Midtrans.
+     * Ini menggantikan fungsi store() yang lama.
+     */
+    public function process(Request $request): RedirectResponse
+    {
+        // 1. Validasi input (dari redirect Midtrans)
+        $request->validate([
+            'order_id' => 'required|string',
+            'status_code' => 'required|string',
+            'transaction_id' => 'required|string',
+            'alamat_id' => 'required|integer|exists:alamats,id', // <-- Ambil alamat_id
+        ]);
+        
+        // 2. Otorisasi alamat (tambahan keamanan)
         $alamat = Alamat::find($request->alamat_id);
         if ($alamat->user_id !== Auth::id()) {
-            return back()->with('error', 'Alamat tidak valid.');
+            return redirect()->route('cart.index')->with('error', 'Alamat tidak valid.');
         }
-        // Simpan alamat sebagai JSON (snapshot)
         $alamatJson = $alamat->toJson();
 
         // 3. Cek keranjang
         if (Cart::isEmpty()) {
-            return redirect()->route('cart.index')->with('error', 'Keranjang Anda kosong.');
+            return redirect()->route('cart.index')->with('error', 'Sesi checkout Anda telah berakhir (Keranjang kosong).');
         }
-
+        
+        // 4. Cek status pembayaran (hanya 'capture' atau 'settlement' atau 'pending' yang kita proses)
+        $statusCode = $request->status_code;
+        $orderId = $request->order_id;
+        
+        // Jika GAGAL atau DITUTUP (status code 201 = pending)
+        // 200 = sukses
+        // 201 = pending
+        // 202 = challenge
+        // 407 = failure
+        if ($statusCode == '202' || $statusCode == '407') {
+            return redirect()->route('cart.index')->with('error', 'Pembayaran Anda gagal atau dibatalkan.');
+        }
+        
+        // Jika Sukses (200) atau Pending (201)
+        // Kita akan membuat pesanan.
+        $statusTransaksi = ($statusCode == '200') ? 'diproses' : 'menunggu_pembayaran';
+        $metodePembayaran = 'midtrans'; // Ganti dari 'bank_transfer'
+        
         $cartItems = Cart::getContent();
         $user = Auth::user();
-
-        // 4. Pisahkan item keranjang berdasarkan Toko (toko_id)
         $itemsPerToko = $cartItems->groupBy('attributes.toko_id');
-        
-        $transaksiBaruDibuat = [];
+        $transaksiBaruDibuat = []; // Untuk halaman sukses
 
-        // 5. Mulai Database Transaction (SANGAT PENTING)
-        // Ini memastikan jika ada 1 saja error (misal stok habis),
-        // semua data yang sudah telanjur dibuat akan dibatalkan (rollback).
+        // 5. Mulai Database Transaction (SAMA SEPERTI LAMA)
         try {
             DB::beginTransaction();
 
-            // Loop untuk setiap T OKO
             foreach ($itemsPerToko as $toko_id => $items) {
                 
-                // 6. Hitung total harga HANYA untuk toko ini
                 $totalHargaPerToko = $items->sum(fn($item) => $item->getPriceSum());
 
-                // 7. Buat 1 Transaksi baru untuk toko ini
+                // Buat Invoice ID baru yang SAMA dengan order_id Midtrans, tapi unik per toko
+                $invoiceId = $orderId . '-T' . $toko_id;
+
                 $transaksi = Transaksi::create([
                     'user_id' => $user->id,
                     'toko_id' => $toko_id,
-                    'invoice_id' => 'INV-' . $toko_id . '-' . Carbon::now()->timestamp, // Invoice ID Unik
+                    'invoice_id' => $invoiceId, // Gunakan order_id + toko_id
                     'total_harga' => $totalHargaPerToko,
-                    'status_pesanan' => 'menunggu_pembayaran', // Status awal
-                    'alamat_pengiriman_json' => $alamatJson,
-                    'metode_pembayaran' => $request->metode_pembayaran,
+                    'ongkir' => 0, // TODO: Tambah ongkir
+                    'total_bayar' => $totalHargaPerToko, // TODO: Tambah ongkir
+                    'status_transaksi' => $statusTransaksi, 
+                    'alamat_pengiriman' => $alamatJson,
+                    'metode_pembayaran' => $metodePembayaran,
+                    'catatan_penjual' => 'Midtrans TX ID: ' . $request->transaction_id, // Simpan ID Midtrans
                 ]);
 
-                // Loop untuk setiap ITEM di dalam toko ini
                 foreach ($items as $item) {
-                    // 8. Ambil produk dan KUNCI (lock) row-nya untuk update stok
-                    // Ini mencegah 'race condition' jika ada 2 orang beli barang yang sama
                     $produk = Produk::lockForUpdate()->find($item->id);
-
-                    // 9. Cek stok (lagi, untuk keamanan)
                     if (!$produk || $produk->stok < $item->quantity) {
-                        // Jika gagal, batalkan semua
                         throw new \Exception('Stok produk ' . $item->name . ' tidak mencukupi.');
                     }
-
-                    // 10. Buat Detail Transaksi
                     DetailTransaksi::create([
                         'transaksi_id' => $transaksi->id,
                         'produk_id' => $produk->id,
+                        'toko_id' => $toko_id, // Denormalisasi
                         'jumlah' => $item->quantity,
                         'harga_satuan' => $item->price,
+                        'subtotal' => $item->getPriceSum(),
                     ]);
-
-                    // 11. Kurangi Stok Produk
                     $produk->stok -= $item->quantity;
                     $produk->save();
                 }
-
-                // Simpan transaksi yang baru dibuat untuk halaman sukses
-                $transaksiBaruDibuat[] = $transaksi->load('toko'); // Load relasi toko
+                
+                // Kirim ID invoice, BUKAN semua data transaksi
+                $transaksiBaruDibuat[] = $invoiceId; 
             }
-
-            // 12. Jika semua loop berhasil, commit transaction
+            
             DB::commit();
 
         } catch (\Exception $e) {
-            // 13. Jika ada error di mana saja, batalkan semua (rollback)
             DB::rollBack();
-            \Log::error('Gagal membuat transaksi: ' . $e->getMessage());
-            // Kembalikan ke keranjang dengan pesan error
+            \Log::error('Gagal membuat transaksi (Midtrans): ' . $e->getMessage());
             return redirect()->route('cart.index')->with('error', 'Gagal memproses pesanan: ' . $e->getMessage());
         }
 
-        // 14. Jika semua berhasil, kosongkan keranjang
+        // 6. Kosongkan keranjang
         Cart::clear();
 
-        // 15. Redirect ke halaman "Pesanan Berhasil"
-        // Kita kirim data transaksi baru via Session Flash
-        return redirect()->route('checkout.success')->with('transaksis', $transaksiBaruDibuat);
+        // 7. Redirect ke halaman sukses
+        // Kirim daftar Invoice ID yang baru dibuat
+        return redirect()->route('pembeli.checkout.success')->with('invoice_ids', $transaksiBaruDibuat);
     }
 
     /**
@@ -151,15 +212,13 @@ class CheckoutController extends Controller
      */
     public function success(Request $request): View|RedirectResponse
     {
-        // Ambil data transaksi dari session
-        $transaksis = $request->session()->get('transaksis');
+        $invoice_ids = $request->session()->get('invoice_ids');
 
-        // Jika tidak ada data (misal user refresh halaman), redirect ke riwayat pesanan
-        if (!$transaksis) {
+        if (!$invoice_ids) {
             return redirect()->route('pembeli.pesanan.index');
         }
 
-        return view('checkout.success');
+        // Tampilkan view sukses
+        return view('checkout.success', compact('invoice_ids'));
     }
 }
-

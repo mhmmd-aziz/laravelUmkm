@@ -13,26 +13,24 @@ return new class extends Migration
     {
         Schema::create('transaksis', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('user_id')->constrained('users'); // ID Pembeli
             
-            // Relasi ke User (Pembeli)
-            $table->foreignId('user_id')->constrained('users')->onDelete('restrict');
-            
-            // Relasi ke Alamat Pengiriman
-            $table->foreignId('alamat_id')->constrained('alamats')->onDelete('restrict');
+            // --- INI DIA PERBAIKANNYA ---
+            $table->foreignId('toko_id')->constrained('tokos'); // ID Toko (Penjual)
+            // --- BATAS PERBAIKAN ---
 
-            $table->string('kode_transaksi')->unique(); // Cth: INV/2025/11/01/123
-            $table->decimal('total_harga_produk', 15, 2);
-            $table->decimal('biaya_pengiriman', 15, 2)->default(0);
-            $table->decimal('total_pembayaran', 15, 2);
+            $table->string('invoice_id')->unique(); // Cth: INV/2025/XI/001
+            $table->string('metode_pembayaran'); // Cth: 'manual_transfer_bca'
+            $table->unsignedBigInteger('total_harga'); // Total harga (tanpa ongkir)
+            $table->unsignedBigInteger('ongkir')->default(0); // Ongkos kirim
+            $table->unsignedBigInteger('total_bayar'); // Total harga + ongkir
+            
+            // Ini adalah 'snapshot' alamat saat checkout, dalam format JSON
+            // Agar data alamat di pesanan ini tidak berubah jika user update alamatnya
+            $table->json('alamat_pengiriman'); 
 
-            $table->string('metode_pembayaran')->nullable();
-            $table->string('status_pembayaran')->default('pending'); // pending, paid, failed, expired
-            
-            // Status pesanan sesuai permintaan Anda
-            $table->string('status_pesanan')->default('menunggu_konfirmasi'); // menunggu_konfirmasi, dikemas, dikirim, selesai, dibatalkan
-            
-            $table->string('nomor_resi')->nullable();
-            $table->string('jasa_pengiriman')->nullable();
+            $table->string('status_transaksi'); // Cth: 'menunggu_pembayaran', 'menunggu_konfirmasi', 'dikemas', 'dikirim', 'selesai', 'dibatalkan'
+            $table->string('nomor_resi')->nullable(); // Diisi oleh penjual saat 'dikirim'
             
             $table->timestamps();
         });
@@ -46,3 +44,4 @@ return new class extends Migration
         Schema::dropIfExists('transaksis');
     }
 };
+

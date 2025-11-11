@@ -6,161 +6,159 @@
     </x-slot>
 
     <div class="py-12">
-        <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg">
-                <div class="p-6">
-                    <p class="text-gray-700 dark:text-gray-300 mb-4">
+        <div class="max-w-3xl mx-auto sm:px-6 lg:px-8"> {{-- Perkecil max-width agar mirip chat --}}
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+                <div class="p-6 text-gray-900 dark:text-gray-100">
+
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">
                         Tanyakan pada AI Analyst kami tentang performa penjualan toko Anda. AI akan menganalisis data omset dan produk terlaris Anda (hanya dari pesanan yang sudah 'selesai') untuk memberikan wawasan.
                     </p>
 
-                    <!-- Area Chat -->
-                    <div id="chat-window" class="h-96 w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-4 overflow-y-auto space-y-4 mb-4">
-                        <!-- Pesan Awal AI -->
-                        <div class="flex">
-                            <div class="flex-shrink-0 mr-3">
-                                <span class="text-2xl">🤖</span>
-                            </div>
-                            <div class="bg-indigo-100 dark:bg-indigo-900 text-gray-900 dark:text-gray-100 p-3 rounded-lg max-w-xs lg:max-w-md">
-                                <p class="text-sm">Halo! Saya AI Analyst toko Anda. Apa yang ingin Anda ketahui tentang performa penjualan Anda hari ini? (Contoh: "Beri saya insight penjualan saya", "Produk apa yang paling laku?")</p>
+                    {{-- Ini adalah UI Chatbot baru --}}
+                    <div id="ai-insight-widget" class="flex flex-col h-[60vh]"> {{-- Tinggi 60% viewport --}}
+                        
+                        <!-- Messages -->
+                        <div id="ai-insight-messages" class="flex-grow p-4 space-y-3 overflow-y-auto bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
+                            <!-- Pesan Awal -->
+                            <div class="flex items-start gap-3">
+                                <span class="flex-shrink-0 inline-flex items-center justify-center h-10 w-10 rounded-full bg-indigo-600 text-white font-semibold">
+                                    🤖
+                                </span>
+                                <div class="p-3 bg-gray-200 dark:bg-gray-700 rounded-lg rounded-tl-none shadow-sm">
+                                    <p class="text-sm text-gray-900 dark:text-gray-100">
+                                        Halo! Saya AI Analyst toko Anda. Apa yang ingin Anda ketahui tentang performa penjualan Anda hari ini? (Contoh: "Beri saya insight penjualan saya", "Produk apa yang paling laku?")
+                                    </p>
+                                </div>
                             </div>
                         </div>
-                    </div>
-
-                    <!-- Input Form -->
-                    <form id="ai-form" class="flex items-center space-x-2">
-                        @csrf {{-- CSRF Token untuk AJAX --}}
-                        <x-text-input id="prompt" name="prompt" class="block w-full" placeholder="Ketik pertanyaan Anda..." required />
                         
-                        <x-primary-button id="send-button">
-                            {{-- SVG Icon Kirim --}}
-                            <svg id="send-icon" class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                              <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
-                            </svg>
-                            {{-- SVG Icon Loading (Spinner) --}}
-                            <svg id="loading-icon" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                        </x-primary-button>
-                    </form>
-                    <p id="error-message" class="text-sm text-red-600 dark:text-red-400 mt-2"></p>
+                        <!-- Input -->
+                        <div id="ai-insight-input" class="mt-4 flex gap-2">
+                            <input type="text" id="ai-insight-text-input" placeholder="Ketik pertanyaan Anda..." class="flex-grow block w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm">
+                            <x-primary-button id="ai-insight-send">
+                                <!-- Icon Send (SVG) -->
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.875L5.999 12zm0 0h7.5" />
+                                </svg>
+                            </x-primary-button>
+                        </div>
+                        <p id="ai-insight-error" class="mt-2 text-sm text-red-600 dark:text-red-400" style="display: none;"></p>
+
+                    </div>
+                    {{-- Batas UI Chatbot baru --}}
 
                 </div>
             </div>
         </div>
     </div>
 
+    @push('scripts')
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const form = document.getElementById('ai-form');
-            const promptInput = document.getElementById('prompt');
-            const chatWindow = document.getElementById('chat-window');
-            const sendButton = document.getElementById('send-button');
-            const sendIcon = document.getElementById('send-icon');
-            const loadingIcon = document.getElementById('loading-icon');
-            const errorMessage = document.getElementById('error-message');
+        document.addEventListener('DOMContentLoaded', function () {
+            const messagesContainer = document.getElementById('ai-insight-messages');
+            const textInput = document.getElementById('ai-insight-text-input');
+            const sendButton = document.getElementById('ai-insight-send');
+            const errorText = document.getElementById('ai-insight-error');
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-            // Fungsi untuk menambahkan pesan ke jendela chat
-            function appendMessage(sender, message) {
-                const messageDiv = document.createElement('div');
-                messageDiv.classList.add('flex');
+            // Fungsi untuk scroll ke bawah
+            function scrollToBottom() {
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+
+            // Fungsi untuk menambah pesan ke UI
+            function addMessage(text, role) {
+                const messageWrapper = document.createElement('div');
+                const messageBubble = document.createElement('div');
                 
-                let content = '';
-                if (sender === 'user') {
-                    // Pesan pengguna (rata kanan)
-                    messageDiv.classList.add('justify-end');
-                    content = `
-                        <div class="bg-blue-500 text-white p-3 rounded-lg max-w-xs lg:max-w-md">
-                            <p class="text-sm">${message}</p>
-                        </div>
-                        <div class="flex-shrink-0 ml-3">
-                            <span class="text-2xl">👤</span>
-                        </div>
+                // Ganti \n (new line) menjadi tag <br> agar tampil di HTML
+                text = text.replace(/\n/g, '<br>');
+
+                messageBubble.innerHTML = text; // Gunakan innerHTML agar <br> ter-render
+                messageBubble.classList.add('p-3', 'rounded-lg', 'shadow-sm', 'text-sm');
+
+                if (role === 'user') {
+                    messageWrapper.classList.add('flex', 'items-start', 'gap-3', 'justify-end');
+                    messageBubble.classList.add('bg-indigo-600', 'text-white', 'rounded-br-none');
+                    messageWrapper.innerHTML = `
+                        ${messageBubble.outerHTML}
+                        <span class="flex-shrink-0 inline-flex items-center justify-center h-10 w-10 rounded-full bg-gray-700 text-white font-semibold">
+                            👤
+                        </span>
                     `;
-                } else { // sender === 'ai'
-                    // Pesan AI (rata kiri)
-                    content = `
-                        <div class="flex-shrink-0 mr-3">
-                            <span class="text-2xl">🤖</span>
-                        </div>
-                        <div class="bg-indigo-100 dark:bg-indigo-900 text-gray-900 dark:text-gray-100 p-3 rounded-lg max-w-xs lg:max-w-md">
-                            <p class="text-sm">${message}</p>
-                        </div>
+                } else { // bot atau loading
+                    messageWrapper.classList.add('flex', 'items-start', 'gap-3');
+                    messageBubble.classList.add('bg-gray-200', 'dark:bg-gray-700', 'text-gray-900', 'dark:text-gray-100', 'rounded-tl-none');
+                    if (role === 'loading') {
+                        messageBubble.classList.add('italic');
+                    }
+                     messageWrapper.innerHTML = `
+                        <span class="flex-shrink-0 inline-flex items-center justify-center h-10 w-10 rounded-full bg-indigo-600 text-white font-semibold">
+                            🤖
+                        </span>
+                        ${messageBubble.outerHTML}
                     `;
                 }
                 
-                messageDiv.innerHTML = content;
-                chatWindow.appendChild(messageDiv);
-                
-                // Scroll ke bawah
-                chatWindow.scrollTop = chatWindow.scrollHeight;
+                messagesContainer.appendChild(messageWrapper);
+                scrollToBottom();
             }
 
-            // Fungsi untuk mengubah status loading
-            function setLoading(isLoading) {
-                if (isLoading) {
-                    sendButton.disabled = true;
-                    promptInput.disabled = true;
-                    sendIcon.classList.add('hidden');
-                    loadingIcon.classList.remove('hidden');
-                } else {
-                    sendButton.disabled = false;
-                    promptInput.disabled = false;
-                    sendIcon.classList.remove('hidden');
-                    loadingIcon.classList.add('hidden');
-                }
-            }
+            // Fungsi untuk kirim pesan
+            async function sendMessage() {
+                const query = textInput.value.trim();
+                if (query === '') return;
 
-            // Saat form disubmit
-            form.addEventListener('submit', async function(e) {
-                e.preventDefault();
-                
-                const prompt = promptInput.value;
-                if (!prompt) return;
+                errorText.style.display = 'none'; // Sembunyikan error lama
+                addMessage(query, 'user');
+                textInput.value = '';
+                sendButton.disabled = true;
 
-                // 1. Tampilkan pesan pengguna
-                appendMessage('user', prompt);
-                promptInput.value = '';
-                errorMessage.innerText = '';
-                
-                // 2. Tampilkan status loading
-                setLoading(true);
+                // Tampilkan status loading
+                addMessage('...', 'loading');
 
                 try {
-                    // 3. Kirim ke backend (API kita sendiri)
-                    const response = await fetch("{{ route('penjual.ai.getInsight') }}", {
+                    const response = await fetch('{{ route("penjual.ai.getInsight") }}', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                            'Accept': 'application/json'
+                            'X-CSRF-TOKEN': csrfToken,
+                            'Accept': 'application/json',
                         },
-                        body: JSON.stringify({ prompt: prompt })
+                        body: JSON.stringify({ prompt: query }) // Kirim sebagai 'prompt'
                     });
+
+                    // Hapus status loading
+                    messagesContainer.querySelector('.flex:has(.loading)')?.remove();
 
                     if (!response.ok) {
                         const errorData = await response.json();
-                        throw new Error(errorData.error || 'Terjadi kesalahan saat menghubungi server.');
+                        throw new Error(errorData.reply || `HTTP error! status: ${response.status}`);
                     }
 
                     const data = await response.json();
-
-                    // 4. Tampilkan balasan AI
-                    // Ganti newline (\n) dengan <br> agar formatnya rapi
-                    const formattedReply = data.reply.replace(/\n/g, '<br>');
-                    appendMessage('ai', formattedReply);
+                    addMessage(data.reply, 'bot');
 
                 } catch (error) {
-                    // 5. Tampilkan error
-                    console.error('Error fetching AI insight:', error);
-                    errorMessage.innerText = 'Error: ' + error.message;
-                    appendMessage('ai', 'Maaf, saya sedang mengalami kesulitan. Silakan coba lagi nanti.');
+                    console.error('Error:', error);
+                    // Hapus status loading jika masih ada
+                    messagesContainer.querySelector('.flex:has(.loading)')?.remove();
+                    // Tampilkan error di bawah input
+                    errorText.textContent = `Error: ${error.message || 'Terjadi kesalahan saat menghubungi server.'}`;
+                    errorText.style.display = 'block';
                 } finally {
-                    // 6. Matikan loading
-                    setLoading(false);
-                    promptInput.focus();
+                    sendButton.disabled = false;
+                    textInput.focus();
+                }
+            }
+            
+            sendButton.addEventListener('click', sendMessage);
+            textInput.addEventListener('keypress', function (e) {
+                if (e.key === 'Enter') {
+                    sendMessage();
                 }
             });
         });
     </script>
+    @endpush
 </x-app-layout>

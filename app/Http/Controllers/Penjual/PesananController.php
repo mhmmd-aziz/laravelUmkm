@@ -8,26 +8,23 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rule; // <-- Import Rule
 
 class PesananController extends Controller
 {
     /**
      * Menampilkan daftar pesanan yang masuk ke toko penjual.
      */
-    public function index(Request $request): View
+    public function index(): View
     {
-        // 1. Ambil toko milik penjual yang sedang login
-        $toko = Auth::user()->toko;
+        $toko_id = Auth::user()->toko->id;
 
-        // 2. Query transaksi HANYA untuk toko ini
-        $query = Transaksi::where('toko_id', $toko->id)
-                          ->with('user') // Ambil data pembeli
-                          ->latest(); // Urutkan dari yang terbaru
-
-        // TODO: Tambahkan filter berdasarkan status
-        
-        $transaksis = $query->paginate(15);
+        // Ambil semua transaksi yang terkait dengan toko ini
+        // Urutkan berdasarkan yang terbaru
+        $transaksis = Transaksi::where('toko_id', $toko_id)
+                            ->with('user') // Ambil data pembeli
+                            ->latest()
+                            ->paginate(15);
 
         return view('penjual.pesanan.index', compact('transaksis'));
     }
@@ -35,54 +32,65 @@ class PesananController extends Controller
     /**
      * Menampilkan detail satu pesanan.
      */
-    public function show(Transaksi $transaksi): View|RedirectResponse
+    public function show(Transaksi $transaksi): View
     {
-        // 1. Otorisasi: Pastikan transaksi ini milik toko penjual
+        // Otorisasi: Pastikan penjual ini berhak melihat transaksi ini
+        // (Transaksi ini harus milik tokonya)
         if ($transaksi->toko_id !== Auth::user()->toko->id) {
-            \Log::warning("Aksi tidak diizinkan: User " . Auth::id() . " mencoba akses transaksi " . $transaksi->id . " milik toko " . $transaksi->toko_id);
-            abort(403, 'Aksi tidak diizinkan.');
+            abort(403, 'AKSI TIDAK DIIZINKAN');
         }
 
-        // 2. Load relasi yang dibutuhkan
-        $transaksi->load('user', 'details.produk');
+        // Load relasi detail_transaksis dan produk di dalamnya
+        $transaksi->load('detailTransaksis.produk');
 
-        // 3. Tampilkan view
+        $transaksi->alamat_pengiriman = json_decode($transaksi->alamat_pengiriman, true);
+
         return view('penjual.pesanan.show', compact('transaksi'));
     }
 
     /**
-     * Update status pesanan (misal: dari dikemas -> dikirim).
+     * Update status pesanan (dikemas, dikirim, selesai, dibatalkan).
      */
     public function updateStatus(Request $request, Transaksi $transaksi): RedirectResponse
     {
-        // 1. Otorisasi: Pastikan transaksi ini milik toko penjual
+        // Otorisasi: Pastikan penjual ini berhak mengupdate transaksi ini
         if ($transaksi->toko_id !== Auth::user()->toko->id) {
-            abort(403, 'Aksi tidak diizinkan.');
+            abort(403, 'AKSI TIDAK DIIZINKAN');
         }
 
-        // 2. Validasi status baru
+        // --- INI PERBAIKANNYA ---
+        // Validasi nama kolom yang benar 'status_transaksi'
         $validated = $request->validate([
-            'status_pesanan' => [
-                'required', 
-                'string', 
-                Rule::in(['menunggu_pembayaran', 'dikemas', 'dikirim', 'selesai', 'dibatalkan'])
+            'status_transaksi' => [
+                'required',
+                Rule::in(['menunggu_pembayaran', 'diproses', 'dikemas', 'dikirim', 'selesai', 'dibatalkan']),
             ],
-            // TODO: Tambahkan validasi 'nomor_resi' jika status == 'dikirim'
+            'nomor_resi' => 'nullable|string|max:255', // Tambahkan validasi resi
         ]);
 
-        // 3. Update status
         try {
-            $transaksi->status_pesanan = $validated['status_pesanan'];
+            // Update status
+            $transaksi->status_transaksi = $validated['status_transaksi'];
+
+            // Jika status 'dikirim', simpan nomor resi
+            if ($validated['status_transaksi'] === 'dikirim' && !empty($validated['nomor_resi'])) {
+                // Asumsi kita simpan resi di 'catatan_penjual' atau buat kolom baru
+                // Untuk sekarang, kita simpan di catatan_penjual
+                $transaksi->catatan_penjual = 'Resi: ' . $validated['nomor_resi'];
+            }
             
-            // TODO: Simpan nomor resi jika ada
-            
+            // Jika status 'selesai', tandai tanggal selesai
+            if ($validated['status_transaksi'] === 'selesai') {
+                $transaksi->updated_at = now(); // Ini akan digunakan untuk filter omset
+            }
+
             $transaksi->save();
 
-        } catch (\Exception $e) {
-            \Log::error('Gagal update status pesanan: ' . $e->getMessage());
-            return back()->with('error', 'Gagal memperbarui status pesanan.');
-        }
+            return back()->with('success', 'Status pesanan berhasil diperbarui!');
 
-        return back()->with('success', 'Status pesanan berhasil diperbarui!');
+        } catch (\Exception $e) {
+            Log::error('Gagal update status pesanan: ' . $e->getMessage());
+            return back()->with('error', 'Gagal memperbarui status pesanan. Silakan coba lagi.');
+        }
     }
 }

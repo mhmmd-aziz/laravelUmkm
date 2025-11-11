@@ -8,8 +8,8 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\Transaksi;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
-use App\Exports\Penjual\OmsetExport; // Panggil class Export
-use Maatwebsite\Excel\Facades\Excel; // Panggil facade Excel
+use App\Exports\Penjual\OmsetExport;
+use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
@@ -20,108 +20,102 @@ class OmsetController extends Controller
      */
     public function index(Request $request): View
     {
-        // Validasi input filter (opsional tapi bagus)
         $request->validate([
             'tanggal_mulai' => 'nullable|date',
             'tanggal_selesai' => 'nullable|date|after_or_equal:tanggal_mulai',
         ]);
 
         $toko_id = Auth::user()->toko->id;
-        $tanggal_mulai = $request->input('tanggal_mulai');
-        $tanggal_selesai = $request->input('tanggal_selesai');
+        
+        // --- INI DIA PERBAIKANNYA (Ambil tanggal filter) ---
+        // Jika tidak ada filter, default 30 hari terakhir
+        $tanggalMulai = $request->input('tanggal_mulai', Carbon::now()->subDays(29)->toDateString());
+        $tanggalSelesai = $request->input('tanggal_selesai', Carbon::now()->toDateString());
+        // --- BATAS PERBAIKAN ---
+
+        // Query dasar untuk omset
+        $queryOmset = Transaksi::where('toko_id', $toko_id)
+                         ->where('status_transaksi', 'selesai');
 
         // --- 1. Query untuk Total Box ---
-        // PENTING: Omset HANYA dihitung dari status 'selesai'
-        
-        // Omset Hari Ini
-        $omsetHariIni = Transaksi::where('toko_id', $toko_id)
-            ->where('status_pesanan', 'selesai')
-            ->whereDate('updated_at', Carbon::today()) // Asumsi 'selesai' = tgl update
+        $omsetHariIni = (clone $queryOmset)
+            ->whereDate('updated_at', Carbon::today())
             ->sum('total_harga');
 
-        // Omset 7 Hari Terakhir
-        $omsetMingguIni = Transaksi::where('toko_id', $toko_id)
-            ->where('status_pesanan', 'selesai')
-            ->whereBetween('updated_at', [Carbon::now()->subDays(7), Carbon::now()])
+        $omsetMingguIni = (clone $queryOmset)
+            ->whereBetween('updated_at', [Carbon::now()->subDays(7)->startOfDay(), Carbon::now()->endOfDay()])
             ->sum('total_harga');
 
-        // Omset Bulan Ini
-        $omsetBulanIni = Transaksi::where('toko_id', $toko_id)
-            ->where('status_pesanan', 'selesai')
-            ->whereYear('updated_at', Carbon::now()->year)
+        $omsetBulanIni = (clone $queryOmset)
             ->whereMonth('updated_at', Carbon::now()->month)
-            ->sum('total_harga');
-
-        // Omset Tahun Ini
-        $omsetTahunIni = Transaksi::where('toko_id', $toko_id)
-            ->where('status_pesanan', 'selesai')
             ->whereYear('updated_at', Carbon::now()->year)
             ->sum('total_harga');
 
-        // --- 2. Query untuk Grafik (12 Bulan Terakhir) ---
-        $dataGrafik = $this->getDataGrafik($toko_id);
+        $omsetTahunIni = (clone $queryOmset)
+            ->whereYear('updated_at', Carbon::now()->year)
+            ->sum('total_harga');
+
+        // --- 2. Query untuk Grafik ---
+        // --- INI DIA PERBAIKANNYA (Kirim filter ke fungsi grafik) ---
+        $dataGrafik = $this->getDataGrafikHarian($toko_id, $tanggalMulai, $tanggalSelesai);
+        // --- BATAS PERBAIKAN ---
 
         // --- 3. Query untuk Tabel Hasil Filter (dengan Pagination) ---
-        $queryFilter = Transaksi::where('toko_id', $toko_id)
-            ->where('status_pesanan', 'selesai')
+        $queryFilter = (clone $queryOmset)
             ->with('user')
+            ->where('updated_at', '>=', Carbon::parse($tanggalMulai)->startOfDay())
+            ->where('updated_at', '<=', Carbon::parse($tanggalSelesai)->endOfDay())
             ->latest('updated_at');
 
-        if ($tanggal_mulai) {
-            $queryFilter->where('updated_at', '>=', Carbon::parse($tanggal_mulai)->startOfDay());
-        }
-        if ($tanggal_selesai) {
-            $queryFilter->where('updated_at', '<=', Carbon::parse($tanggal_selesai)->endOfDay());
-        }
+        $transaksiSelesai = $queryFilter->paginate(10)->appends($request->query());
 
-        $transaksisHasilFilter = $queryFilter->paginate(10);
+        // Ubah data grafik ke JSON untuk dilempar ke View
+        $dataGrafikJson = json_encode($dataGrafik);
 
         return view('penjual.omset.index', compact(
             'omsetHariIni',
             'omsetMingguIni',
             'omsetBulanIni',
             'omsetTahunIni',
-            'dataGrafik',
-            'transaksisHasilFilter'
+            'dataGrafikJson', // Kirim data JSON
+            'transaksiSelesai',
+            'tanggalMulai', // Kirim balik tanggal filter untuk diisi di form
+            'tanggalSelesai'
         ));
     }
 
     /**
-     * Menyiapkan data untuk grafik omset 12 bulan.
+     * Menyiapkan data untuk grafik omset harian berdasarkan rentang.
      */
-    private function getDataGrafik($toko_id): array
+    // --- INI DIA PERBAIKANNYA (Terima parameter filter) ---
+    private function getDataGrafikHarian($toko_id, $tanggalMulai, $tanggalSelesai): array
     {
+        // Ambil data omset per HARI
         $data = Transaksi::where('toko_id', $toko_id)
-            ->where('status_pesanan', 'selesai')
-            ->where('updated_at', '>=', Carbon::now()->subMonths(12)->startOfMonth())
+            ->where('status_transaksi', 'selesai')
+            ->whereBetween('updated_at', [Carbon::parse($tanggalMulai)->startOfDay(), Carbon::parse($tanggalSelesai)->endOfDay()])
             ->select(
-                DB::raw('YEAR(updated_at) as tahun'),
-                DB::raw('MONTH(updated_at) as bulan'),
+                DB::raw('DATE(updated_at) as tanggal'),
                 DB::raw('SUM(total_harga) as total_omset')
             )
-            ->groupBy('tahun', 'bulan')
-            ->orderBy('tahun', 'asc')
-            ->orderBy('bulan', 'asc')
-            ->get();
+            ->groupBy('tanggal')
+            ->orderBy('tanggal', 'asc')
+            ->get()
+            ->keyBy('tanggal'); // Jadikan tanggal sebagai key
 
-        // Siapkan array 12 bulan
+        // Siapkan array untuk semua tanggal dalam rentang (termasuk yang 0)
         $labels = [];
         $dataPoints = [];
-        $now = Carbon::now();
+        
+        // Buat periode tanggal dari mulai sampai selesai
+        $period = Carbon::parse($tanggalMulai)->daysUntil(Carbon::parse($tanggalSelesai));
 
-        for ($i = 11; $i >= 0; $i--) {
-            $tanggal = $now->copy()->subMonths($i);
-            $labels[] = $tanggal->format('M Y'); // Cth: Nov 2025
+        foreach ($period as $date) {
+            $formatTanggal = $date->format('Y-m-d');
+            $labels[] = $date->format('d M'); // Label (Cth: 08 Nov)
             
-            $bulan = $tanggal->month;
-            $tahun = $tanggal->year;
-
-            // Cari data omset untuk bulan & tahun ini
-            $omsetBulan = $data->first(function ($item) use ($bulan, $tahun) {
-                return $item->bulan == $bulan && $item->tahun == $tahun;
-            });
-
-            $dataPoints[] = $omsetBulan ? $omsetBulan->total_omset : 0;
+            // Cek jika ada data omset di tanggal ini
+            $dataPoints[] = $data->get($formatTanggal)->total_omset ?? 0;
         }
 
         return [
@@ -129,9 +123,11 @@ class OmsetController extends Controller
             'data' => $dataPoints,
         ];
     }
+    // --- BATAS PERBAIKAN ---
 
     /**
      * Memproses ekspor data omset ke Excel.
+     * (Fungsi ini sudah benar dari langkah sebelumnya)
      */
     public function export(Request $request): BinaryFileResponse
     {
@@ -139,10 +135,8 @@ class OmsetController extends Controller
         $tanggal_mulai = $request->input('tanggal_mulai');
         $tanggal_selesai = $request->input('tanggal_selesai');
 
-        // Buat nama file yang dinamis
         $fileName = 'Laporan_Omset_' . $toko_id . '_' . Carbon::now()->format('Y-m-d') . '.xlsx';
 
-        // Panggil class Export
         return Excel::download(
             new OmsetExport($toko_id, $tanggal_mulai, $tanggal_selesai), 
             $fileName

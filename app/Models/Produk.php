@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany; // <-- TAMBAHKAN INI
 
 class Produk extends Model
 {
@@ -24,10 +25,15 @@ class Produk extends Model
     ];
 
     /**
-     * Mendapatkan Toko (penjual) dari produk ini.
+     * Mengganti 'id' dengan 'slug' untuk pencarian route-model binding.
      */
-     /**
-     * Relasi ke Toko (Satu produk dimiliki oleh satu Toko).
+    public function getRouteKeyName(): string
+    {
+        return 'slug';
+    }
+
+    /**
+     * Relasi ke Toko (Satu Produk dimiliki oleh satu Toko).
      */
     public function toko(): BelongsTo
     {
@@ -35,23 +41,20 @@ class Produk extends Model
     }
 
     /**
-     * Mendapatkan kategori dari produk ini.
+     * Relasi ke Kategori (Satu Produk masuk dalam satu Kategori).
      */
-    /**
-     * Relasi ke Kategori (Satu produk dimiliki oleh satu Kategori).
-     */
-     public function kategori(): BelongsTo
+    public function kategori(): BelongsTo
     {
         return $this->belongsTo(Kategori::class);
     }
 
-    # public function detail_transaksi(): BelongsTo{
-    #    return $this->belongsTo(detail_transaksi::class);
-   # }
-
-
-     public function getRouteKeyName(): string
+    // --- INI DIA PERBAIKANNYA (Fungsi yang hilang) ---
+    /**
+     * Relasi ke Detail Transaksi (Satu Produk bisa ada di banyak Detail Transaksi).
+     */
+    public function detailTransaksis(): HasMany
     {
-        return 'slug';
+        return $this->hasMany(DetailTransaksi::class);
     }
+    // --- BATAS PERBAIKAN ---
 }
