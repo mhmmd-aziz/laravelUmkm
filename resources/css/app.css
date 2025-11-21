@@ -1,3 +1,52 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@keyframes marquee-slow {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee-slow {
+  animation: marquee-slow 20s linear infinite;
+}
+.nav-hover {
+    position: relative; 
+}
+
+.nav-hover::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: -3px;
+    width: 0;
+    height: 2px;
+    background: currentColor;
+    transition: width .25s ease;
+}
+
+.nav-hover:hover::after {
+    width: 100%;
+}
+
+.nav-btn {
+    @apply px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition;
+}
+@keyframes marquee-slow {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee-slow {
+  animation: marquee-slow 25s linear infinite;
+}
+    .navlink {
+        @apply text-gray-700 font-medium hover:text-orange-600 transition relative;
+    }
+    .navlink::after {
+        content: "";
+        @apply absolute left-0 -bottom-[2px] h-[2px] w-0 bg-orange-600 transition-all;
+    }
+    .navlink:hover::after {
+        @apply w-full;
+    }

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\PagesController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\DashboardRedirectController;
@@ -28,6 +29,12 @@ use App\Http\Controllers\LanguageController;
 
 // == RUTE PUBLIK ==
 Route::get('/', [HomeController::class, 'index'])->name('home');
+Route::get('/about', [PagesController::class, 'about'])->name('about');
+Route::get('/kontak', [PagesController::class, 'kontak'])->name('kontak');
+Route::post('/kontak/send', [\App\Http\Controllers\ContactController::class, 'send'])
+    ->name('kontak.send');
+Route::get('/faq', [PagesController::class, 'faq'])->name('faq');
+Route::get('/tentang-umkm', [PagesController::class, 'tentangUmkm'])->name('tentang.umkm');
 Route::get('/produk/{produk:slug}', [ProdukPublikController::class, 'show'])->name('produk.show');
 Route::post('/ai-chatbot-query', [AiChatbotController::class, 'query'])->name('ai.chatbot.query');
 
