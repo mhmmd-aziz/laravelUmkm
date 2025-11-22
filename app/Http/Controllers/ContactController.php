@@ -19,7 +19,7 @@ class ContactController extends Controller
         try {
 
             // Kirim email ke inbox tujuan
-            Mail::to('amirullah.c88p@gmail.com') // <--- penerima aman dan tidak sama pengirim
+            Mail::to('rupanusa.id@gmail.com') // <--- penerima aman dan tidak sama pengirim
                 ->send(new ContactMail(
                     $request->nama,
                     $request->email,
