@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\OtpController;
 use App\Http\Controllers\PagesController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\HomeController;
@@ -119,3 +120,8 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
+Route::get('/verify-otp', [OtpController::class, 'index'])->name('verify.otp.page');
+Route::post('/verify-otp', [OtpController::class, 'verify'])->name('verify.otp');
+
+// Resend OTP
+Route::post('/resend-otp', [OtpController::class, 'resend'])->name('verify.otp.resend');

@@ -4,62 +4,71 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rules;
-use Illuminate\View\View;
-use Illuminate\Validation\Rule; // Import Rule
+use Illuminate\Validation\Rule;
 
 class RegisteredUserController extends Controller
 {
-    /**
-     * Display the registration view.
-     */
-    public function create(): View
+    public function create()
     {
         return view('auth.register');
     }
 
-    /**
-     * Handle an incoming registration request.
-     *
-     * @throws \Illuminate\Validation\ValidationException
-     */
     public function store(Request $request): RedirectResponse
     {
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
-            
-            // Validasi untuk role
-            // Memastikan role yang dikirim adalah 'pembeli' atau 'penjual'
-            // Admin tidak boleh mendaftar dari sini
+
+            'email' => [
+                'required',
+                'string',
+                'lowercase',
+                'email',
+                'max:255',
+                'unique:users',
+            ],
+
+            // Validasi password super lengkap
+            'password' => [
+                'required',
+                'confirmed',
+                'string',
+                'min:8',
+                'regex:/[A-Z]/',
+                'regex:/[a-z]/',
+                'regex:/[0-9]/',
+                'regex:/[@$!%*#?&]/',
+            ],
+
             'role' => ['required', 'string', Rule::in(['pembeli', 'penjual'])],
         ]);
 
+        // Buat user baru
         $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
+            'name'     => $request->name,
+            'email'    => $request->email,
             'password' => Hash::make($request->password),
-            'role' => $request->role, // Simpan role ke database
+            'role'     => $request->role,
         ]);
 
-        event(new Registered($user));
+        // 🔥 Generate OTP 6 digit DAN pastikan tidak hilang angka 0 depan
+        $otp = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
 
-        Auth::login($user);
+        // Simpan OTP ke database
+        $user->update([
+            'otp' => $otp,
+            'otp_expires_at' => now()->addMinutes(10),
+        ]);
 
-        // Arahkan pengguna berdasarkan role setelah registrasi
-        // Nanti kita akan buat middleware untuk ini, sekarang redirect ke dashboard saja
-        if ($user->role === 'penjual') {
-            // Nanti bisa diarahkan ke 'penjual.dashboard'
-            return redirect(route('dashboard', absolute: false)); 
-        }
+        // Kirim email OTP
+        \Mail::to($user->email)->send(new \App\Mail\SendOtpMail($otp));
 
-        // Default redirect untuk pembeli
-        return redirect(route('dashboard', absolute: false));
+        // 🔥 Jangan login dulu — user harus verifikasi OTP dulu
+        return redirect()->route('verify.otp.page', [
+            'email' => $user->email
+        ]);
     }
 }
