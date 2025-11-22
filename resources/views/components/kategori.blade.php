@@ -6,31 +6,41 @@
             Kategori Pilihan
         </h2>
 
-        <!-- Grid -->
-        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-7">
+        <!-- 2 Bagian -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-10 items-start">
 
-            @foreach($items as $item)
-            <div class="group">
-                <div class="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm 
-                            flex flex-col items-center justify-center
-                            transition-all duration-300 
-                            hover:border-orange-500 hover:shadow-xl hover:shadow-orange-100 hover:-translate-y-1">
+            <!-- BAGIAN KIRI: MASKOT -->
+            <div class="flex justify-center md:justify-start">
+                <img src="/images/maskot2.png" 
+                     alt="Maskot"
+                     class="w-72 md:w-96 object-contain drop-shadow-xl">
+            </div>
 
-                    <!-- Icon -->
-                    <div class="w-20 h-20 mb-4 flex items-center justify-center">
-                        <img src="{{ $item['icon'] }}" 
-                             alt="{{ $item['name'] }}" 
-                             class="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105">
+            <!-- BAGIAN KANAN: GRID KATEGORI -->
+            <div class="md:col-span-2">
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-7">
+
+                    @foreach($items as $item)
+                    <div class="group">
+                        <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm 
+                                    transition-all duration-300 hover:border-orange-500 
+                                    hover:shadow-xl hover:shadow-orange-100 hover:-translate-y-1">
+
+                            <!-- Full Image -->
+                            <div class="w-full sm:h-full">
+                                <img src="{{ $item['icon'] }}"
+
+                                     class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105">
+                            </div>
+
+                            <!-- Title -->
+    
+                        </div>
                     </div>
+                    @endforeach
 
-                    <!-- Title -->
-                    <p class="font-semibold text-gray-700 text-lg text-center 
-                              group-hover:text-orange-600 transition-colors">
-                        {{ $item['name'] }}
-                    </p>
                 </div>
             </div>
-            @endforeach
 
         </div>
 

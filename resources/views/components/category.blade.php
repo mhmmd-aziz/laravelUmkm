@@ -1,11 +1,11 @@
 @props(['produks'])
 
-<div class="bg-white dark:bg-gray-900">
+<div class="bg-white dark:bg-gray-900 mt-4">
   <div class="mx-auto max-w-2xl px-4 py-16 sm:px-6 sm:pt-24 lg:max-w-7xl lg:px-8">
 
-    <h2 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100 mb-6">
+    <h1 class="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100 mb-6">
         Produk Terbaru
-    </h2>
+    </h1>
 
     <!-- GRID PRODUK -->
     <div class="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">

@@ -55,7 +55,7 @@
             </div>
         </div>
 
-        <div class="lg:w-1/2 relative z-10" data-aos="fade-left" data-aos-delay="200">
+        <div class="lg:w-1/2 relative z-10 ml-24" data-aos="fade-left" data-aos-delay="200">
             <div class="relative w-full max-w-lg mx-auto">
                 <div
                     class="absolute top-0 -left-4 w-72 h-72 bg-orange-400 dark:bg-orange-600 rounded-full mix-blend-multiply filter blur-2xl opacity-30 animate-blob">
@@ -66,7 +66,7 @@
                 <div
                     class="absolute -bottom-8 left-20 w-72 h-72 bg-pink-400 dark:bg-pink-600 rounded-full mix-blend-multiply filter blur-2xl opacity-30 animate-blob animation-delay-4000">
                 </div>
-                <img src="{{ asset('images/image.png') }}" alt="Koleksi Budaya Nusantara RupaNusa"
+                <img src="{{ asset('images/image2.jpg') }}" alt="Koleksi Budaya Nusantara RupaNusa"
                     class="relative rounded-3xl drop-shadow-2xl hover:scale-[1.02] transition-transform duration-500">
             </div>
         </div>
