@@ -4,11 +4,13 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\PendingUser; // <--- PENTING: Panggil Model Sementara
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\SendOtpMail;
 
 class RegisteredUserController extends Controller
 {
@@ -28,10 +30,11 @@ class RegisteredUserController extends Controller
                 'lowercase',
                 'email',
                 'max:255',
-                'unique:users',
+                // Tetap cek ke tabel 'users' asli agar yang sudah member tidak bisa daftar lagi
+                'unique:users', 
             ],
 
-            // Validasi password super lengkap
+            // Validasi password super lengkap (Sesuai kode Anda)
             'password' => [
                 'required',
                 'confirmed',
@@ -46,29 +49,29 @@ class RegisteredUserController extends Controller
             'role' => ['required', 'string', Rule::in(['pembeli', 'penjual'])],
         ]);
 
-        // Buat user baru
-        $user = User::create([
-            'name'     => $request->name,
-            'email'    => $request->email,
-            'password' => Hash::make($request->password),
-            'role'     => $request->role,
-        ]);
-
-        // 🔥 Generate OTP 6 digit DAN pastikan tidak hilang angka 0 depan
+        // 🔥 Generate OTP 6 digit (Sesuai kode Anda)
         $otp = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
 
-        // Simpan OTP ke database
-        $user->update([
-            'otp' => $otp,
-            'otp_expires_at' => now()->addMinutes(10),
-        ]);
+        // 🔥 SIMPAN KE PENDING_USERS (BUKAN USER)
+        // updateOrCreate berguna jika user salah input OTP dan daftar ulang, 
+        // datanya akan ditimpa (update), tidak double.
+        PendingUser::updateOrCreate(
+            ['email' => $request->email], // Cari berdasarkan email
+            [
+                'name'     => $request->name,
+                'password' => Hash::make($request->password), // Password di-hash disini
+                'role'     => $request->role,
+                'otp'      => $otp,
+                'otp_expires_at' => now()->addMinutes(10),
+            ]
+        );
 
-        // Kirim email OTP
-        \Mail::to($user->email)->send(new \App\Mail\SendOtpMail($otp));
+        // Kirim email ke alamat yang diinput
+        Mail::to($request->email)->send(new SendOtpMail($otp));
 
-        // 🔥 Jangan login dulu — user harus verifikasi OTP dulu
+        // Redirect ke halaman verifikasi
         return redirect()->route('verify.otp.page', [
-            'email' => $user->email
+            'email' => $request->email
         ]);
     }
 }

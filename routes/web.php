@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\OtpController;
 use App\Http\Controllers\PagesController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\HomeController;
@@ -12,15 +11,16 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProdukPublikController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\Pembeli\AlamatController;
-// --- INI PERUBAHANNYA ---
-use App\Http\Controllers\CheckoutController; // Pastikan ini ada
-// --- BATAS PERUBAHAN ---
+use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\Pembeli\PesananController as PembeliPesananController;
 use App\Http\Controllers\Penjual\PesananController as PenjualPesananController;
 use App\Http\Controllers\Penjual\OmsetController;
 use App\Http\Controllers\Penjual\AiInsightController;
 use App\Http\Controllers\AiChatbotController;
 use App\Http\Controllers\LanguageController;
+use App\Http\Controllers\KategoriController;
+// --- HANYA PAKAI SATU CONTROLLER OTP ---
+use App\Http\Controllers\OtpVerificationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -41,6 +41,13 @@ Route::post('/ai-chatbot-query', [AiChatbotController::class, 'query'])->name('a
 
 // == RUTE PENGGANTI BAHASA ==
 Route::post('/language-switch', [LanguageController::class, 'switchLang'])->name('language.switch');
+
+// == RUTE KHUSUS VERIFIKASI OTP (Ditaruh diluar Auth karena user belum login) ==
+Route::controller(OtpVerificationController::class)->group(function () {
+    Route::get('/verify-otp', 'show')->name('verify.otp.page');
+    Route::post('/verify-otp', 'verify')->name('verify.otp');
+    Route::post('/verify-otp/resend', 'resend')->name('verify.otp.resend');
+});
 
 // == RUTE AUTENTIKASI (LOGIN, REGISTER, DLL) ==
 require __DIR__.'/auth.php';
@@ -82,6 +89,7 @@ Route::middleware(['auth', 'verified', 'role:penjual'])->prefix('penjual')->name
         Route::get('/ai-insight', [AiInsightController::class, 'index'])->name('ai.index');
         Route::post('/ai-insight/query', [AiInsightController::class, 'getInsight'])->name('ai.getInsight');
         Route::post('/ai-copywriting', [AiInsightController::class, 'generateDeskripsi'])->name('ai.generateDeskripsi');
+        
     });
 
     Route::middleware(['toko.doesnt_exist'])->group(function () {
@@ -99,19 +107,13 @@ Route::middleware(['auth', 'verified', 'role:pembeli'])->prefix('pembeli')->name
     
     Route::resource('alamat', AlamatController::class);
 
-    // --- INI DIA PERBAIKANNYA ---
-    // Hapus route 'store' (POST) yang lama
-    // Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
-    
-    // Ganti dengan route 'process' (GET)
+    // Checkout
     Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
     Route::get('/checkout/process', [CheckoutController::class, 'process'])->name('checkout.process'); 
-    // --- BATAS PERBAIKAN ---
 
     Route::get('/checkout/success', [CheckoutController::class, 'success'])->name('checkout.success');
 
     Route::get('/pesanan', [PembeliPesananController::class, 'index'])->name('pesanan.index');
-    // Route::get('/pesanan/{transaksi}', [PembeliPesananController::class, 'show'])->name('pesanan.show'); // Kita belum buat view-nya
 });
 
 // == RUTE PROFILE (Bawaan Breeze) ==
@@ -120,8 +122,3 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
-Route::get('/verify-otp', [OtpController::class, 'index'])->name('verify.otp.page');
-Route::post('/verify-otp', [OtpController::class, 'verify'])->name('verify.otp');
-
-// Resend OTP
-Route::post('/resend-otp', [OtpController::class, 'resend'])->name('verify.otp.resend');

@@ -7,12 +7,13 @@
  <x-label />
 <x-kategori :items="[
     ['icon' => '/icons/batik.png'],
-    ['icon' => '/icons/anyaman.jpg'],
-    ['icon' => '/icons/ukiran-kayu.jpg'],
-    ['icon' => '/icons/perhiasan-etnik.jpg'],
-    ['icon' => '/icons/tenun.jpg'],
-    ['icon' => '/icons/keramik-gerabah.jpg'],
-    ['icon' => '/icons/wayang.jpg'],
+    ['icon' => '/icons/anyaman.png'],
+    ['icon' => '/icons/ukiran.png'],
+    ['icon' => '/icons/perhiasan.png'],
+    ['icon' => '/icons/tenun.png'],
+    ['icon' => '/icons/keramik.png'],
+    ['icon' => '/icons/wayang.png'],
+    ['icon' => '/icons/makanan.png'],
 ]" />
 
   <x-category :produks="$produks" />
