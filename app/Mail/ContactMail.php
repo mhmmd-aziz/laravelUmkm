@@ -22,8 +22,13 @@ class ContactMail extends Mailable
     }
 
     public function build()
-    {
-        return $this->subject('Pesan Baru dari Form Kontak RupaNusa')
-                    ->view('emails.contact');
-    }
+{
+    return $this->subject('Pesan Baru dari Form Kontak RupaNusa')
+                ->view('emails.contact')
+                ->with([
+                    'nama'  => $this->nama,
+                    'email' => $this->email,
+                    'pesan' => $this->pesan,
+                ]);
+}
 }

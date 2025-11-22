@@ -40,7 +40,7 @@
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 animate-spin" style="display: none;" viewBox="0 0 20 20" fill="currentColor">
                                     <path fill-rule="evenodd" d="M10 3a7 7 0 100 14 7 7 0 000-14zM2 10a8 8 0 1116 0 8 8 0 01-16 0z" clip-rule="evenodd" />
                                 </svg>
-                                <span id="generate-ai-text">✨ Buat Deskripsi dengan AI (Ollama)</span>
+                                <span id="generate-ai-text">✨ Buat Deskripsi dengan AI</span>
                             </x-secondary-button>
                             <p id="generate-ai-error" class="mt-1 text-sm text-red-600 dark:text-red-400" style="display: none;"></p>
                         </div>

@@ -90,5 +90,98 @@
     "Type your message...": "Ketik pesan Anda...",
     "reset filter": "reset filter",
     "tambah produk baru": "tambah produk baru",
-    "(Hanya dari transaksi 'selesai')": "(Hanya dari transaksi 'selesai')"
+    "(Hanya dari transaksi 'selesai')": "(Hanya dari transaksi 'selesai')",
+    
+    "nav_about": "Tentang Kami",
+    "nav_contact": "Kontak",
+    "nav_faq": "FAQ",
+
+    "hero_welcome": "Selamat Datang di ",
+    "hero_subtitle": "E-Commerce Budaya Nusantara",
+    "hero_desc": "Temukan produk UMKM lokal dari berbagai daerah Nusantara — dari batik, tenun, ukiran kayu, hingga kuliner tradisional. Semua dalam satu platform untuk mendukung kebanggaan budaya Indonesia.",
+    "btn_shop_now": "Belanja Sekarang",
+    "btn_explore": "Jelajahi Kategori",
+
+    "sect_categories_title": "Kategori Pilihan",
+    "cat_batik": "Batik",
+    "cat_anyaman": "Anyaman",
+    "cat_wood": "Kriya Kayu",
+    "cat_jewelry": "Perhiasan Etnik",
+    "cat_tenun": "Tenun",
+    "cat_pottery": "Keramik & Gerabah",
+    "cat_wayang": "Wayang",
+    "cat_other": "Lainnya",
+
+    "sect_products_title": "Produk Terbaru",
+    "filter_title": "Filter Produk",
+    "filter_province": "Provinsi",
+    "filter_apply": "Terapkan Filter",
+    "filter_reset": "Reset",
+    "search_placeholder": "Cari Produk",
+
+    "about_title": "Tentang",
+    "about_desc": "RupaNusa lahir sebagai ruang digital untuk merayakan budaya Nusantara. Kami menghubungkan ribuan UMKM, pengrajin, seniman, dan masyarakat Indonesia melalui sebuah platform yang menghadirkan produk lokal berkualitas dengan pengalaman belanja modern dan aman. Fokus kami bukan hanya pada transaksi, tetapi pada pelestarian nilai budaya, pemberdayaan ekonomi lokal, serta menjadikan karya Indonesia relevan di pasar global. Setiap produk membawa cerita, setiap UMKM membawa harapan.",
+    "btn_learn_more": "Pelajari Lebih Lanjut",
+    "btn_back_home": "Kembali ke Beranda",
+
+    "vision_title": "Visi & Misi RupaNusa",
+    "vis_title": "Visi",
+    "vis_text": "Menjadi platform budaya dan e-commerce lokal terbesar di Indonesia yang bukan hanya menjadi tempat transaksi, tetapi pusat pelestarian identitas Nusantara. RupaNusa ingin membawa kekayaan budaya Indonesia ke dunia, sekaligus menjadi fondasi ekonomi kreatif berbasis UMKM.",
+    "mis_title": "Misi",
+    "mis_1": "Memperkuat ekosistem UMKM melalui teknologi digital modern.",
+    "mis_2": "Menyediakan platform yang aman, kredibel, dan mudah digunakan bagi semua pengguna.",
+    "mis_3": "Melestarikan budaya melalui promosi karya lokal yang autentik dan berkualitas.",
+    "mis_4": "Menghubungkan UMKM Indonesia dengan pasar nasional hingga internasional.",
+    "mis_5": "Menghadirkan pengalaman belanja yang humanis, informatif, dan penuh nilai budaya.",
+
+    "val_title": "Nilai-Nilai yang Kami Junjung",
+    "val_auth": "Autentisitas",
+    "val_auth_desc": "Kami memastikan bahwa setiap produk adalah karya asli pengrajin lokal. Tidak ada imitasi, tidak ada pengaburan nilai. Hanya karya autentik Nusantara.",
+    "val_sust": "Keberlanjutan",
+    "val_sust_desc": "RupaNusa mendorong praktik usaha ramah lingkungan dan mendukung kelestarian budaya melalui keberlanjutan teknik, material, dan tradisi lokal.",
+    "val_fair": "Keadilan",
+    "val_fair_desc": "Setiap UMKM memiliki hak yang sama untuk berkembang. Kami memberi ruang setara agar pelaku usaha kecil bisa bersaing secara sehat di pasar digital.",
+
+    "why_title": "Kenapa Memilih RupaNusa?",
+    "why_1_title": "UMKM Terkurasi",
+    "why_1_desc": "Setiap UMKM melalui proses kurasi, memastikan produk autentik, berkualitas, dan merepresentasikan nilai budaya Nusantara yang sesungguhnya.",
+    "why_2_title": "Aman & Kredibel",
+    "why_2_desc": "Kami menggunakan sistem pembayaran aman, enkripsi data, serta proteksi konsumen yang kuat untuk menjaga kenyamanan dalam setiap transaksi.",
+    "why_3_title": "Produk dengan Cerita",
+    "why_3_desc": "Setiap produk membawa kisah: siapa pembuatnya, bagaimana prosesnya, hingga filosofi yang diwariskan dari generasi ke generasi.",
+
+    "contact_title": "Hubungi RupaNusa",
+    "contact_sub": "Kami selalu siap membantu Anda terkait layanan, kemitraan, maupun pertanyaan lainnya.",
+    "form_title": "Kirimkan Pesan Anda",
+    "lbl_name": "Nama Lengkap",
+    "lbl_email": "Email",
+    "lbl_msg": "Pesan",
+    "btn_send": "Kirim Pesan",
+    "info_address": "Alamat",
+    "info_phone": "Telepon",
+    "info_map": "Lokasi Kami di Google Maps",
+
+    "faq_title": "Frequently Asked Questions",
+    "faq_sub": "Informasi lengkap mengenai RupaNusa—mulai dari belanja, keamanan produk hingga peluang menjadi penjual.",
+    "faq_q1": "Apa itu RupaNusa?",
+    "faq_q2": "Bagaimana cara membeli produk?",
+    "faq_q3": "Apakah produk di RupaNusa asli?",
+    "faq_q4": "Bagaimana cara menjadi penjual?",
+
+    "footer_desc": "Platform yang menghubungkan budaya Nusantara dengan dunia, menghadirkan produk UMKM, kerajinan tangan, dan karya seni terbaik.",
+    "footer_sub_title": "Berlangganan",
+    "footer_sub_desc": "Dapatkan update terbaru soal budaya Nusantara dan penawaran eksklusif.",
+
+    "lbl_category": "Kategori",
+    "lbl_province": "Provinsi",
+    "opt_all_category": "Semua Kategori",
+    "opt_all_province": "Semua Provinsi",
+    "currency_symbol": "Rp",
+    "txt_no_product": "Tidak ada produk ditemukan.",
+    "lbl_latest_product": "Produk Terbaru",
+
+    "Filter Produk": "Filter Produk"
+   
+   
+   
 }

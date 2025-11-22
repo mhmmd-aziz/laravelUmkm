@@ -150,20 +150,25 @@ class ProdukController extends Controller
      */
     public function destroy(Produk $produk): RedirectResponse
     {
-        // Otorisasi: Pastikan produk ini milik toko user yang sedang login
-        $this->authorize('delete', $produk); // <-- Ini yang menyebabkan error
+        // 1. Otorisasi
+        $this->authorize('delete', $produk);
 
         try {
-            if ($produk->gambar_produk_utama) {
-                Storage::disk('public')->delete($produk->gambar_produk_utama);
-            }
+            // 2. Hapus data (Otomatis Soft Delete karena model sudah pakai trait SoftDeletes)
+            // Laravel hanya akan mengisi kolom 'deleted_at' dengan waktu sekarang
+            // Data TIDAK hilang dari database, tapi disembunyikan dari query biasa.
             $produk->delete();
+
+            // CATATAN PENTING:
+            // Kita JANGAN menghapus gambar dari Storage::disk('public')
+            // Agar jika dilihat di riwayat pesanan lama, gambarnya masih muncul.
+
         } catch (\Exception $e) {
             \Log::error('Gagal menghapus produk: ' . $e->getMessage());
-            return back()->with('error', 'Gagal menghapus produk. Silakan coba lagi.');
+            return back()->with('error', 'Gagal menghapus produk.');
         }
 
-        return redirect()->route('penjual.produk.index')->with('success', 'Produk berhasil dihapus.');
+        return redirect()->route('penjual.produk.index')->with('success', 'Produk berhasil dihapus (diarsipkan).');
     }
 }
 

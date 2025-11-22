@@ -44,14 +44,34 @@
                                 <!-- Detail Item (Looping) -->
                                 <div class="p-4 space-y-3 divide-y divide-gray-200 dark:divide-gray-700">
                                     {{-- INI DIA PERBAIKANNYA (details -> detailTransaksis) --}}
-                                    @foreach ($transaksi->detailTransaksis as $detail)
+                                   @foreach ($transaksi->detailTransaksis as $detail)
                                         <div class="flex items-center space-x-4 pt-3 first:pt-0">
-                                            <img src="{{ Storage::url($detail->produk->gambar_produk_utama) }}" alt="{{ $detail->produk->nama_produk }}" class="w-16 h-16 rounded-md object-cover">
+                                            
+                                            {{-- 1. Cek Gambar: Jika produk ada, tampilkan gambar. Jika null, tampilkan kotak abu --}}
+                                            @if($detail->produk)
+                                                <img src="{{ Storage::url($detail->produk->gambar_produk_utama) }}" 
+                                                     alt="{{ $detail->produk->nama_produk }}" 
+                                                     class="w-16 h-16 rounded-md object-cover">
+                                            @else
+                                                <div class="w-16 h-16 bg-gray-200 dark:bg-gray-600 rounded-md flex items-center justify-center text-xs text-gray-500 dark:text-gray-400">
+                                                    Dihapus
+                                                </div>
+                                            @endif
+
                                             <div class="flex-1 text-sm">
-                                                <p class="font-medium text-gray-900 dark:text-gray-100">{{ $detail->produk->nama_produk }}</p>
-                                                <p class="text-gray-600 dark:text-gray-400">{{ $detail->jumlah }} x Rp {{ number_format($detail->harga_satuan, 0, ',', '.') }}</p>
+                                                {{-- 2. Cek Nama: Gunakan '??' untuk mencegah error jika nama null --}}
+                                                <p class="font-medium text-gray-900 dark:text-gray-100">
+                                                    {{ $detail->produk->nama_produk ?? 'Produk Tidak Tersedia' }}
+                                                </p>
+                                                
+                                                <p class="text-gray-600 dark:text-gray-400">
+                                                    {{ $detail->jumlah }} x Rp {{ number_format($detail->harga_satuan, 0, ',', '.') }}
+                                                </p>
                                             </div>
-                                            <p class="font-medium text-gray-900 dark:text-gray-100">Rp {{ number_format($detail->subtotal, 0, ',', '.') }}</p>
+                                            
+                                            <p class="font-medium text-gray-900 dark:text-gray-100">
+                                                Rp {{ number_format($detail->subtotal, 0, ',', '.') }}
+                                            </p>
                                         </div>
                                     @endforeach
                                 </div>
