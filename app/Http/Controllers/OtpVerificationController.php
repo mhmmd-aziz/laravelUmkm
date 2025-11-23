@@ -3,11 +3,11 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\User;           // Model User Asli
-use App\Models\PendingUser;    // Model User Sementara
+use App\Models\User;           
+use App\Models\PendingUser;    
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
-use App\Mail\SendOtpMail;      // Pastikan Mailable ini ada
+use App\Mail\SendOtpMail;      
 
 class OtpVerificationController extends Controller
 {

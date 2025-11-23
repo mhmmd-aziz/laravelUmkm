@@ -12,9 +12,7 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-// --- INI DIA PERBAIKANNYA ---
-use Illuminate\Support\Str; // 1. Tambahkan use statement untuk Str
-// --- BATAS PERBAIKAN ---
+use Illuminate\Support\Str; 
 
 class OmsetExport implements FromCollection, WithHeadings, WithMapping, ShouldAutoSize, WithStyles
 {
@@ -34,12 +32,9 @@ class OmsetExport implements FromCollection, WithHeadings, WithMapping, ShouldAu
     */
     public function collection()
     {
-        // Query data berdasarkan filter yang sama di OmsetController
         $query = Transaksi::where('toko_id', $this->tokoId)
-                        // --- INI PERBAIKANNYA ---
-                        ->where('status_transaksi', 'selesai') // 2. Perbaiki kolom (sudah benar)
-                        // --- BATAS PERBAIKAN ---
-                        ->with('user', 'detailTransaksis.produk'); // Ambil relasi
+                        ->where('status_transaksi', 'selesai')
+                        ->with('user', 'detailTransaksis.produk');
 
         if ($this->tanggalMulai) {
             $query->where('updated_at', '>=', Carbon::parse($this->tanggalMulai)->startOfDay());
@@ -56,7 +51,6 @@ class OmsetExport implements FromCollection, WithHeadings, WithMapping, ShouldAu
      */
     public function headings(): array
     {
-        // Definisikan judul kolom di file Excel
         return [
             'Invoice ID',
             'Tanggal Selesai',
@@ -76,48 +70,57 @@ class OmsetExport implements FromCollection, WithHeadings, WithMapping, ShouldAu
      */
     public function map($transaksi): array
     {
-        // Ubah format data per baris
-        
-        // Gabungkan detail produk menjadi satu string
+        // 1. Format Daftar Produk
         $produkList = $transaksi->detailTransaksis->map(function ($detail) {
-            return $detail->jumlah . 'x ' . $detail->produk->nama_produk;
-        })->implode("\n"); // Pisahkan dengan baris baru
+            // Cek biar ga error kalau produk dihapus
+            $namaProduk = $detail->produk ? $detail->produk->nama_produk : 'Produk Terhapus';
+            return $detail->jumlah . 'x ' . $namaProduk;
+        })->implode("\n");
 
         $totalQty = $transaksi->detailTransaksis->sum('jumlah');
 
+        // 2. Format Alamat (INI YANG BIKIN ERROR TADI)
         $alamat = $transaksi->alamat_pengiriman;
-        $fullAlamat = sprintf(
-            "%s, %s, %s, %s, %s",
-            $alamat['alamat_lengkap'],
-            $alamat['kecamatan'],
-            $alamat['kota_kabupaten'],
-            $alamat['provinsi'],
-            $alamat['kode_pos']
-        );
+
+        // Cek: Jika datanya masih berupa String JSON, kita ubah jadi Array dulu
+        if (is_string($alamat)) {
+            $alamat = json_decode($alamat, true);
+        }
+
+        // Cek: Pastikan sekarang sudah jadi Array valid
+        if (is_array($alamat)) {
+            $fullAlamat = sprintf(
+                "%s, %s, %s, %s, %s",
+                $alamat['alamat_lengkap'] ?? '-',
+                $alamat['kecamatan'] ?? '-',
+                $alamat['kota_kabupaten'] ?? '-',
+                $alamat['provinsi'] ?? '-',
+                $alamat['kode_pos'] ?? '-'
+            );
+        } else {
+            $fullAlamat = 'Alamat tidak valid';
+        }
 
         return [
             $transaksi->invoice_id,
             $transaksi->updated_at->format('Y-m-d H:i:s'),
-            $transaksi->user->name,
-            $transaksi->user->email,
-            // --- INI DIA PERBAIKANNYA ---
-            Str::title(str_replace('_', ' ', $transaksi->metode_pembayaran)), // 3. Panggil Str
-            // --- BATAS PERBAIKAN ---
+            $transaksi->user->name ?? 'User Terhapus', // Pakai ?? jaga-jaga user dihapus
+            $transaksi->user->email ?? '-',
+            Str::title(str_replace('_', ' ', $transaksi->metode_pembayaran)),
             $produkList,
             $totalQty,
-            $transaksi->total_harga, // Omset (sebelum ongkir)
+            $transaksi->total_harga,
             $fullAlamat,
         ];
     }
 
     /**
-     * Terapkan style (cth: Bold header)
+     * Terapkan style
      */
     public function styles(Worksheet $sheet)
     {
         return [
-            // Style baris pertama (header)
-            1    => ['font' => ['bold' => true]],
+            1 => ['font' => ['bold' => true]],
         ];
     }
 }

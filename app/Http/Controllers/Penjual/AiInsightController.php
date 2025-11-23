@@ -30,11 +30,11 @@ class AiInsightController extends Controller
         $validated = $request->validate([
             'prompt' => 'required|string|max:1000',
         ]);
-        $query = $validated['prompt'];
+        $userQuery = $validated['prompt'];
         
         $tokoId = Auth::user()->toko->id;
 
-        // 1. Kumpulkan Data Penjualan (HANYA dari status 'selesai')
+        // 1. Kumpulkan Data Penjualan
         $queryOmset = Transaksi::where('toko_id', $tokoId)
             ->where('status_transaksi', 'selesai');
 
@@ -43,7 +43,6 @@ class AiInsightController extends Controller
 
         $produkTerlaris = Produk::where('toko_id', $tokoId)
             ->withCount(['detailTransaksis' => function ($q) {
-                // Pastikan detail transaksi juga dari pesanan 'selesai'
                 $q->whereHas('transaksi', function ($subQ) {
                     $subQ->where('status_transaksi', 'selesai');
                 });
@@ -52,58 +51,66 @@ class AiInsightController extends Controller
             ->take(5)
             ->get(['nama_produk', 'detail_transaksis_count']);
 
-        // --- Guard Clause (Jika data kosong) ---
+        // Guard Clause
         if ($omsetBulanIni == 0 && $produkTerlaris->sum('detail_transaksis_count') == 0) {
             return response()->json([
-                'reply' => 'Tentu! Tapi sepertinya Anda belum memiliki data penjualan (pesanan berstatus "selesai") yang bisa saya analisis. Silakan kembali lagi setelah ada penjualan yang tuntas.'
+                'reply' => 'Saat ini belum ada data penjualan berstatus "selesai" yang bisa dianalisis. Silakan kembali setelah ada transaksi berhasil.'
             ]);
         }
             
         $dataPenjualan = [
-            'total_omset_bulan_ini_rp' => $omsetBulanIni,
-            'top_5_produk_terlaris_bulan_ini' => $produkTerlaris->toArray()
+            'omset_bulan_ini' => 'Rp ' . number_format($omsetBulanIni, 0, ',', '.'),
+            'top_produk' => $produkTerlaris->map(function($p) {
+                return $p->nama_produk . ' (' . $p->detail_transaksis_count . ' terjual)';
+            })->toArray()
         ];
         
-        // Kirim JSON sebagai satu baris
         $dataJson = json_encode($dataPenjualan);
 
-        // 2. System Prompt (Peran untuk AI)
-        // --- INI PERBAIKANNYA (Prompt lebih tegas) ---
-        $systemPrompt = "Anda adalah Analis Bisnis AI yang cerdas dan suportif untuk pemilik UMKM Budaya Indonesia.
-        TUGAS ANDA:
-        1.  **WAJIB BALAS DALAM BAHASA INDONESIA.**
-        2.  **WAJIB BALAS SEBAGAI TEKS BIASA.** JANGAN gunakan Markdown (seperti `**` atau `*`).
-        3.  Anda akan diberi data penjualan (JSON) dan pertanyaan dari penjual.
-        4.  Jawab pertanyaan penjual HANYA berdasarkan data yang diberikan.
-        5.  Berikan jawaban yang memotivasi dan actionable (bisa ditindaklanjuti).
+        // 2. System Prompt (DIPERBAIKI: LEBIH TEGAS & SPESIFIK)
+        // Trik: Gunakan instruksi bahasa Inggris untuk aturan (Llama 3 lebih patuh instruksi EN),
+        // tapi perintahkan OUTPUT dalam bahasa Indonesia.
+        $systemPrompt = "You are an expert Business Analyst for Indonesian MSMEs (UMKM).
+        
+        CONTEXT DATA (JSON):
+        $dataJson
 
-        DATA PENJUALAN (HANYA DARI PESANAN 'SELESAI'):
-        $dataJson";
+        INSTRUCTIONS:
+        1. Analyze the DATA provided above to answer the user's question.
+        2. **CRITICAL:** YOUR RESPONSE MUST BE 100% IN INDONESIAN LANGUAGE. DO NOT USE ENGLISH.
+        3. **FORMAT:** Use plain text only. Do NOT use Markdown (no bold **, no italics *).
+        4. Keep the tone professional, encouraging, and actionable.
+        5. If the user asks about something not in the data, say you only know about sales data.
+        
+        User Question: \"$userQuery\"
+        
+        Answer in Indonesian:";
         
         try {
-            // 3. Panggil API Ollama (Lokal)
-            $response = Http::timeout(120) // Timeout 2 menit
+            // 3. Panggil API Ollama
+            $response = Http::timeout(120)
                 ->baseUrl('http://localhost:11434/api')
-                ->post('/chat', [ // Gunakan endpoint /chat
+                ->post('/chat', [
                     'model' => 'llama3:8b', 
                     'stream' => false,
+                    // -- TAMBAHAN PENTING --
+                    'temperature' => 0.3, // Rendahkan suhu agar AI tidak "halusinasi" bahasa
+                    // ----------------------
                     'messages' => [
-                        ['role' => 'system', 'content' => $systemPrompt],
-                        ['role' => 'user', 'content' => $query]
+                        ['role' => 'user', 'content' => $systemPrompt] // Gabung jadi satu prompt user agar lebih kuat
                     ]
                 ]);
 
             if (!$response->successful()) {
                 Log::error('Error Ollama API (Insight): ' . $response->body());
-                return response()->json(['reply' => 'Maaf, Analis AI sedang mengalami gangguan (Server).'], 500);
+                return response()->json(['reply' => 'Maaf, server AI sedang sibuk.'], 500);
             }
             
-            $reply = $response->json()['message']['content'] ?? 'Maaf, saya tidak bisa memproses balasan saat ini.';
+            $reply = $response->json()['message']['content'] ?? 'Tidak ada balasan.';
             
-            // --- PERBAIKAN: Bersihkan Markdown ---
-            $reply = str_replace(['**', '*'], '', $reply);
-            $reply = trim(preg_replace('/^Here is.*?\n/', '', $reply)); // Hapus "Here is the analysis..."
-
+            // Bersihkan sisa-sisa Markdown
+            $reply = str_replace(['**', '*', '#', '`'], '', $reply);
+            
             return response()->json([
                 'reply' => trim($reply)
             ]);
@@ -111,7 +118,7 @@ class AiInsightController extends Controller
         } catch (\Exception $e) {
             Log::error('Error Ollama API (Insight): '. $e->getMessage());
             return response()->json([
-                'reply' => 'Maaf, Analis AI sedang mengalami gangguan teknis (Tidak bisa terhubung ke Ollama). Pastikan Ollama sudah berjalan.'
+                'reply' => 'Terjadi kesalahan koneksi ke AI Lokal.'
             ], 500);
         }
     }
@@ -126,62 +133,57 @@ class AiInsightController extends Controller
             'kategori' => 'required|string|max:255',
         ]);
         
-        // --- INI DIA PERBAIKANNYA (Prompt Bahasa Indonesia lebih tegas) ---
-        $prompt = "Anda adalah copywriter AI untuk UMKM Kriya Budaya Indonesia.
-        TUGAS ANDA:
-        1.  **WAJIB TULIS DALAM BAHASA INDONESIA.**
-        2.  **WAJIB TULIS SEBAGAI TEKS BIASA.** JANGAN gunakan Markdown (seperti `**` atau `*`).
-        3.  Buatkan draf deskripsi produk untuk e-commerce.
-
-        Data Produk:
-        Nama Produk: '{$validated['nama_produk']}'
-        Kategori: '{$validated['kategori']}'
+        // --- PROMPT DIPERBAIKI (TEKNIK ROLE-PLAYING KUAT) ---
+        $prompt = "You are a professional Indonesian Copywriter.
+        Task: Create a product description for an e-commerce site.
         
-        Tulis dalam 2 bagian, pisahkan jawaban HANYA dengan '---PEMISAH---'.
+        Product Details:
+        - Name: '{$validated['nama_produk']}'
+        - Category: '{$validated['kategori']}'
         
-        Format Jawaban (WAJIB IKUTI, JANGAN TAMBAHKAN KATA PEMBUKA SEPERTI 'Tentu!' atau 'Ini drafnya:'):
-(Deskripsi singkat 1-2 kalimat di sini)
----PEMISAH---
-(Deskripsi lengkap 2 paragraf di sini)";
-        // --- BATAS PERBAIKAN ---
+        STRICT RULES:
+        1. **OUTPUT MUST BE IN INDONESIAN LANGUAGE ONLY.**
+        2. Do NOT use Markdown formatting (no ** bold).
+        3. Output format must be exactly split by '---PEMISAH---'.
+        4. Part 1: Short description (persuasive, 1-2 sentences).
+        5. Part 2: Long description (detailed, 2 paragraphs).
+        
+        Output Pattern:
+        [Short Description Bahasa Indonesia]
+        ---PEMISAH---
+        [Long Description Bahasa Indonesia]";
 
         try {
-            // Panggil API Ollama (Lokal)
-             $response = Http::timeout(120) // Timeout 2 menit
+            $response = Http::timeout(120)
                 ->baseUrl('http://localhost:11434/api')
-                ->post('/chat', [ // Gunakan endpoint /chat
+                ->post('/chat', [
                     'model' => 'llama3:8b', 
                     'stream' => false,
+                    // -- TAMBAHAN PENTING --
+                    'temperature' => 0.4, // Sedikit lebih kreatif dari insight, tapi tetap terkontrol
+                    // ----------------------
                     'messages' => [
-                        // Kita gabungkan jadi 1 prompt 'user' agar lebih stabil
                         ['role' => 'user', 'content' => $prompt] 
                     ]
                 ]);
 
             if (!$response->successful()) {
-                Log::error('Error Ollama API (Copywriting): ' . $response->body());
-                return response()->json(['error' => 'Gagal membuat deskripsi (Server).'], 500);
+                return response()->json(['error' => 'Gagal memproses AI.'], 500);
             }
 
             $text = $response->json()['message']['content'] ?? '';
             
-            // --- PERBAIKAN: Parsing (pemilahan) yang lebih aman ---
-            $parts = explode('---PEMISAH---', $text, 2); // Limit 2
+            // Parsing hasil
+            $parts = explode('---PEMISAH---', $text, 2);
             
-            // Hapus semua Markdown dan kata pembuka
-            $deskripsiSingkat = trim(str_replace(['**', '*', 'Deskripsi Singkat (1-2 kalimat persuasif):'], '', $parts[0] ?? 'Deskripsi singkat tidak tersedia.'));
-            
-            // Cek jika $parts[1] ada
-            if (isset($parts[1])) {
-                $deskripsiLengkap = trim(str_replace(['**', '*', 'Deskripsi Lengkap (2 paragraf detail):'], '', $parts[1]));
-            } else {
-                // Jika AI tidak pakai ---PEMISAH---, kita ambil sisa teksnya
-                $deskripsiLengkap = trim(str_replace(['**', '*', 'Deskripsi Lengkap (2 paragraf detail):'], '', str_replace($deskripsiSingkat, '', $text)));
-                if(empty($deskripsiLengkap)) {
-                     $deskripsiLengkap = 'Deskripsi lengkap tidak tersedia.';
-                }
+            $deskripsiSingkat = trim(str_replace(['**', '*', '"'], '', $parts[0] ?? ''));
+            $deskripsiLengkap = isset($parts[1]) ? trim(str_replace(['**', '*', '"'], '', $parts[1])) : '';
+
+            // Fallback jika AI gagal memisah
+            if (empty($deskripsiLengkap)) {
+                $deskripsiLengkap = $deskripsiSingkat; 
+                $deskripsiSingkat = Str::limit($deskripsiSingkat, 100);
             }
-            // --- BATAS PERBAIKAN ---
 
             return response()->json([
                 'deskripsi_singkat' => $deskripsiSingkat,
@@ -190,7 +192,7 @@ class AiInsightController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Error Ollama API (Copywriting): ' . $e->getMessage());
-            return response()->json(['error' => 'Gagal membuat deskripsi. Pastikan Ollama sudah berjalan.'], 500);
+            return response()->json(['error' => 'Koneksi ke AI gagal.'], 500);
         }
     }
 }
