@@ -207,6 +207,12 @@
             cursor: not-allowed;
         }
     </style>
+    <style>
+    html {
+        scroll-behavior: smooth;
+    }
+</style>
+
 </head>
 
 <body class="font-sans antialiased" x-data="{ loading: true }" x-init="setTimeout(() => loading = false, 2000)">
