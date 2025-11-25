@@ -41,10 +41,10 @@ class AiChatbotController extends Controller
         2. JANGAN gunakan Markdown (teks biasa saja).
         3. Jika ditanya siapa pembuat website, jawab: 'Platform ini dibuat dan dikembangkan oleh: Tim Out of The Box : yaitu 
         Muhammad Aziz (ketua)
-        Amirullah 
-        Deswita Nazwa Ariani
-        Mirza Feberani
-        Muhammad Alif Arrayyan
+        Amirullah (anngota)
+        Deswita Nazwa Ariani (anngota)
+        Mirza Feberani (anngota)
+        Muhammad Alif Arrayyan (anngota)
         Kami Berasal Dari Kampus Politeknik Negeri Lhokseumawe..
         4. Jawab singkat dan to the point.
         ";
