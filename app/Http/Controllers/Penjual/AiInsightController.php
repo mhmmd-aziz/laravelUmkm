@@ -11,121 +11,115 @@ use App\Models\Transaksi;
 use App\Models\Produk;
 use Carbon\Carbon;
 use Illuminate\View\View;
+use Illuminate\Support\Str;
 
 class AiInsightController extends Controller
 {
-    /**
-     * Menampilkan halaman AI Insight.
-     */
     public function index(): View
     {
         return view('penjual.ai.index');
     }
 
-    /**
-     * Menganalisis data penjualan dan memberikan insight.
-     */
+    // --- HELPER PRIVATE UNTUK KONEKSI KE GROQ ---
+    private function callGroqApi($messages, $temperature = 0.5)
+    {
+        $apiKey = env('GROQ_API_KEY');
+        $model = env('GROQ_MODEL', 'llama-3.3-70b-versatile');
+
+        // Kita gunakan endpoint Groq yang kompatibel dengan OpenAI
+        $response = Http::withHeaders([
+            'Authorization' => 'Bearer ' . $apiKey,
+            'Content-Type'  => 'application/json',
+        ])->timeout(30)->post('https://api.groq.com/openai/v1/chat/completions', [
+            'model'       => $model,
+            'messages'    => $messages,
+            'temperature' => $temperature,
+            'max_tokens'  => 1024,
+        ]);
+
+        if ($response->successful()) {
+            return $response->json()['choices'][0]['message']['content'] ?? null;
+        }
+
+        Log::error('Groq API Error: ' . $response->body());
+        return null;
+    }
+
+    // --- FITUR 1: INSIGHT PENJUALAN (DATABASE INTEGRATED) ---
     public function getInsight(Request $request)
     {
-        $validated = $request->validate([
-            'prompt' => 'required|string|max:1000',
-        ]);
+        $validated = $request->validate(['prompt' => 'required|string|max:1000']);
         $userQuery = $validated['prompt'];
-        
         $tokoId = Auth::user()->toko->id;
 
-        // 1. Kumpulkan Data Penjualan
-        $queryOmset = Transaksi::where('toko_id', $tokoId)
-            ->where('status_transaksi', 'selesai');
-
-        $omsetBulanIni = (clone $queryOmset)->whereMonth('updated_at', Carbon::now()->month)
-            ->sum('total_harga');
+        // 1. AMBIL DATA DARI DATABASE (INTEGRASI NYATA)
+        $queryOmset = Transaksi::where('toko_id', $tokoId)->where('status_transaksi', 'selesai');
+        $omsetBulanIni = (clone $queryOmset)->whereMonth('updated_at', Carbon::now()->month)->sum('total_harga');
 
         $produkTerlaris = Produk::where('toko_id', $tokoId)
             ->withCount(['detailTransaksis' => function ($q) {
-                $q->whereHas('transaksi', function ($subQ) {
-                    $subQ->where('status_transaksi', 'selesai');
-                });
+                $q->whereHas('transaksi', function ($subQ) { $subQ->where('status_transaksi', 'selesai'); });
             }])
             ->orderBy('detail_transaksis_count', 'desc')
             ->take(5)
             ->get(['nama_produk', 'detail_transaksis_count']);
 
-        // Guard Clause
-        if ($omsetBulanIni == 0 && $produkTerlaris->sum('detail_transaksis_count') == 0) {
-            return response()->json([
-                'reply' => 'Saat ini belum ada data penjualan berstatus "selesai" yang bisa dianalisis. Silakan kembali setelah ada transaksi berhasil.'
-            ]);
-        }
-            
+        // Format data agar bisa dibaca AI
         $dataPenjualan = [
+            'bulan_ini' => Carbon::now()->format('F Y'),
             'omset_bulan_ini' => 'Rp ' . number_format($omsetBulanIni, 0, ',', '.'),
             'top_produk' => $produkTerlaris->map(function($p) {
                 return $p->nama_produk . ' (' . $p->detail_transaksis_count . ' terjual)';
             })->toArray()
         ];
-        
         $dataJson = json_encode($dataPenjualan);
 
-        // 2. System Prompt (DIPERBAIKI: LEBIH TEGAS & SPESIFIK)
-        // Trik: Gunakan instruksi bahasa Inggris untuk aturan (Llama 3 lebih patuh instruksi EN),
-        // tapi perintahkan OUTPUT dalam bahasa Indonesia.
-        $systemPrompt = "You are an expert Business Analyst for Indonesian MSMEs (UMKM).
-        
-        CONTEXT DATA (JSON):
+        // 2. SETTING IDENTITAS AI (RUPA NUSANTARA)
+        $systemPrompt = "
+        IDENTITAS:
+        Anda adalah AI Business Analyst khusus untuk platform 'Rupa Nusantara', sebuah e-commerce budaya Indonesia karya Muhammad Aziz.
+        Tugas Anda adalah menganalisis performa toko milik user berdasarkan data nyata.
+
+        DATA TOKO USER (JSON):
         $dataJson
 
-        INSTRUCTIONS:
-        1. Analyze the DATA provided above to answer the user's question.
-        2. **CRITICAL:** YOUR RESPONSE MUST BE 100% IN INDONESIAN LANGUAGE. DO NOT USE ENGLISH.
-        3. **FORMAT:** Use plain text only. Do NOT use Markdown (no bold **, no italics *).
-        4. Keep the tone professional, encouraging, and actionable.
-        5. If the user asks about something not in the data, say you only know about sales data.
-        
-        User Question: \"$userQuery\"
-        
-        Answer in Indonesian:";
-        
-        try {
-            // 3. Panggil API Ollama
-            $response = Http::timeout(120)
-                ->baseUrl('http://localhost:11434/api')
-                ->post('/chat', [
-                    'model' => 'llama3:8b', 
-                    'stream' => false,
-                    // -- TAMBAHAN PENTING --
-                    'temperature' => 0.3, // Rendahkan suhu agar AI tidak "halusinasi" bahasa
-                    // ----------------------
-                    'messages' => [
-                        ['role' => 'user', 'content' => $systemPrompt] // Gabung jadi satu prompt user agar lebih kuat
-                    ]
-                ]);
+        INSTRUKSI:
+        1. Jawab pertanyaan user berdasarkan DATA di atas.
+        2. Gunakan Bahasa Indonesia yang profesional namun menyemangati.
+        3. JANGAN gunakan format Markdown (seperti **bold** atau *italic*), gunakan teks biasa saja.
+        4. Jika user bertanya siapa pembuat sistem ini, jawab dengan bangga: 'Platform ini dibuat dan dikembangkan oleh: Tim Out of The Box : yaitu 
+        Muhammad Aziz (ketua)
+        Amirullah (anngota)
+        Deswita Nazwa Ariani (anngota)
+        Mirza Feberani (anngota)
+        Muhammad Alif Arrayyan (anngota)
+        Kami Berasal Dari Kampus Politeknik Negeri Lhokseumawe.'.
+        ";
 
-            if (!$response->successful()) {
-                Log::error('Error Ollama API (Insight): ' . $response->body());
-                return response()->json(['reply' => 'Maaf, server AI sedang sibuk.'], 500);
-            }
+        // 3. KIRIM KE GROQ
+        try {
+            $messages = [
+                ['role' => 'system', 'content' => $systemPrompt],
+                ['role' => 'user', 'content' => $userQuery]
+            ];
             
-            $reply = $response->json()['message']['content'] ?? 'Tidak ada balasan.';
+            // Suhu 0.3 agar analisis datanya akurat (tidak ngarang)
+            $reply = $this->callGroqApi($messages, 0.3); 
+
+            if (!$reply) return response()->json(['reply' => 'Maaf, server AI sedang sibuk.'], 500);
             
-            // Bersihkan sisa-sisa Markdown
+            // Bersihkan sisa markdown
             $reply = str_replace(['**', '*', '#', '`'], '', $reply);
             
-            return response()->json([
-                'reply' => trim($reply)
-            ]);
+            return response()->json(['reply' => trim($reply)]);
 
         } catch (\Exception $e) {
-            Log::error('Error Ollama API (Insight): '. $e->getMessage());
-            return response()->json([
-                'reply' => 'Terjadi kesalahan koneksi ke AI Lokal.'
-            ], 500);
+            Log::error('Error Groq Insight: '. $e->getMessage());
+            return response()->json(['reply' => 'Terjadi kesalahan koneksi.'], 500);
         }
     }
 
-    /**
-     * Membuat draf deskripsi produk menggunakan AI.
-     */
+    // --- FITUR 2: COPYWRITING ---
     public function generateDeskripsi(Request $request)
     {
         $validated = $request->validate([
@@ -133,66 +127,28 @@ class AiInsightController extends Controller
             'kategori' => 'required|string|max:255',
         ]);
         
-        // --- PROMPT DIPERBAIKI (TEKNIK ROLE-PLAYING KUAT) ---
-        $prompt = "You are a professional Indonesian Copywriter.
-        Task: Create a product description for an e-commerce site.
+        $prompt = "You are a Copywriter for 'Rupa Nusantara' (Indonesian Culture E-commerce).
+        Product: '{$validated['nama_produk']}' (Category: {$validated['kategori']}).
         
-        Product Details:
-        - Name: '{$validated['nama_produk']}'
-        - Category: '{$validated['kategori']}'
-        
-        STRICT RULES:
-        1. **OUTPUT MUST BE IN INDONESIAN LANGUAGE ONLY.**
-        2. Do NOT use Markdown formatting (no ** bold).
-        3. Output format must be exactly split by '---PEMISAH---'.
-        4. Part 1: Short description (persuasive, 1-2 sentences).
-        5. Part 2: Long description (detailed, 2 paragraphs).
-        
-        Output Pattern:
-        [Short Description Bahasa Indonesia]
-        ---PEMISAH---
-        [Long Description Bahasa Indonesia]";
+        RULES:
+        1. OUTPUT IN INDONESIAN ONLY.
+        2. NO Markdown formatting.
+        3. Format: [Short Description] ---PEMISAH--- [Long Description 2 paragraphs].";
 
         try {
-            $response = Http::timeout(120)
-                ->baseUrl('http://localhost:11434/api')
-                ->post('/chat', [
-                    'model' => 'llama3:8b', 
-                    'stream' => false,
-                    // -- TAMBAHAN PENTING --
-                    'temperature' => 0.4, // Sedikit lebih kreatif dari insight, tapi tetap terkontrol
-                    // ----------------------
-                    'messages' => [
-                        ['role' => 'user', 'content' => $prompt] 
-                    ]
-                ]);
+            $messages = [['role' => 'user', 'content' => $prompt]];
+            $text = $this->callGroqApi($messages, 0.6); // Lebih kreatif
 
-            if (!$response->successful()) {
-                return response()->json(['error' => 'Gagal memproses AI.'], 500);
-            }
-
-            $text = $response->json()['message']['content'] ?? '';
+            if (!$text) return response()->json(['error' => 'Gagal.'], 500);
             
-            // Parsing hasil
             $parts = explode('---PEMISAH---', $text, 2);
-            
-            $deskripsiSingkat = trim(str_replace(['**', '*', '"'], '', $parts[0] ?? ''));
-            $deskripsiLengkap = isset($parts[1]) ? trim(str_replace(['**', '*', '"'], '', $parts[1])) : '';
-
-            // Fallback jika AI gagal memisah
-            if (empty($deskripsiLengkap)) {
-                $deskripsiLengkap = $deskripsiSingkat; 
-                $deskripsiSingkat = Str::limit($deskripsiSingkat, 100);
-            }
-
             return response()->json([
-                'deskripsi_singkat' => $deskripsiSingkat,
-                'deskripsi_lengkap' => $deskripsiLengkap
+                'deskripsi_singkat' => trim($parts[0] ?? ''),
+                'deskripsi_lengkap' => trim($parts[1] ?? $parts[0])
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Error Ollama API (Copywriting): ' . $e->getMessage());
-            return response()->json(['error' => 'Koneksi ke AI gagal.'], 500);
+            return response()->json(['error' => 'Error.'], 500);
         }
     }
 }

@@ -212,7 +212,7 @@
         scroll-behavior: smooth;
     }
 </style>
-
+<link rel="icon" href="{{ asset('favicon.png') }}" type="image/png">
 </head>
 
 <body class="font-sans antialiased" x-data="{ loading: true }" x-init="setTimeout(() => loading = false, 2000)">

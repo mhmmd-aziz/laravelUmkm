@@ -169,7 +169,7 @@
                         errorText.style.display = 'block';
                     } finally {
                         // Sembunyikan loading
-                        buttonText.textContent = '✨ Buat Deskripsi dengan AI (Ollama)';
+                        buttonText.textContent = '✨ Buat Deskripsi dengan AI';
                         buttonSpinner.style.display = 'none';
                         generateButton.disabled = false;
                     }
